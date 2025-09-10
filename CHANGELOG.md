@@ -1,0 +1,2 @@
+cookbook-airflow CHANGELOG
+===============
