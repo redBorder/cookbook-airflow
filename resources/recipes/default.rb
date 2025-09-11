@@ -6,4 +6,3 @@
 airflow_config 'Configure airflow' do
   action :add
 end
-

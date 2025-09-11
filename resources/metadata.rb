@@ -1,4 +1,3 @@
-# frozen_string_literal: true
 
 name             'airflow'
 maintainer       'Eneo Tecnología S.L.'
