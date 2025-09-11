@@ -145,7 +145,7 @@ action :register do
         action :nothing
       end.run_action(:run)
 
-      node.normal['airflow']['registered'] = true
+      node.override['airflow']['registered'] = true
     end
     Chef::Log.info('Airflow service has been registered in consul')
   rescue => e
@@ -161,7 +161,7 @@ action :deregister do
         action :nothing
       end.run_action(:run)
 
-      node.normal['airflow']['registered'] = false
+      node.override['airflow']['registered'] = false
     end
     Chef::Log.info('Airflow service has been deregistered from consul')
   rescue => e

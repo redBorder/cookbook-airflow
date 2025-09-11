@@ -1,3 +1,5 @@
+unified_mode true
+
 # Cookbook:: airflow
 # Resource:: config
 
