@@ -13,8 +13,6 @@ action :add do
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
     airflow_hosts = new_resource.airflow_hosts
-    airflow_secrets = new_resource.airflow_secrets
-    airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
     cluster_info = get_cluster_info(airflow_hosts, node['hostname'])
 
     dnf_package 'airflow' do

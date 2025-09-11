@@ -9,7 +9,6 @@ default_action :add
 attribute :user, kind_of: String, default: 'airflow'
 attribute :group, kind_of: String, default: 'airflow'
 attribute :airflow_hosts, kind_of: Array, default: []
-attribute :airflow_secrets, kind_of: Hash, default: {}
 attribute :cdomain, kind_of: String, default: 'redborder.cluster'
 
 # Airflow configuration attributes
