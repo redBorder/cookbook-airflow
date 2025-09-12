@@ -13,6 +13,8 @@ action :add do
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
     airflow_hosts = new_resource.airflow_hosts
+    airflow_secrets = new_resource.airflow_secrets
+    airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
     cluster_info = get_cluster_info(airflow_hosts, node['hostname'])
 
     dnf_package 'airflow' do
@@ -37,47 +39,65 @@ action :add do
       mode '0755'
     end
 
-    template "#{airflow_dir}/airflow.conf" do
+    template '/etc/airflow/airflow.cfg' do
       source 'airflow.conf.erb'
-      owner user
-      group group
+      owner 'airflow'
+      group 'airflow'
       mode '0644'
-      cookbook 'airflow'
       variables(
-        port: node['airflow']['port'],
-        cdomain: cdomain,
-        password: airflow_password,
+        airflow_dir: airflow_dir,
         data_dir: data_dir,
         log_file: log_file,
         pid_file: pid_file,
-        is_cluster: cluster_info[:is_cluster],
-        master_host: cluster_info[:master_host],
-        is_master_here: cluster_info[:is_master_here]
+        cdomain: cdomain,
+        airflow_hosts: airflow_hosts,
+        airflow_secrets: airflow_secrets,
+        airflow_password: airflow_secrets['pass'],
+        cluster_info: cluster_info
       )
-      notifies :restart, 'service[airflow]', :delayed
     end
 
-    file "#{airflow_dir}/airflow.conf" do
+    file "#{airflow_dir}/airflow.cfg" do
       action :delete
       only_if do
-        ::File.exist?("#{airflow_dir}/airflow.conf") &&
-          !::File.read("#{airflow_dir}/airflow.conf").include?("include #{airflow_dir}/airflow.conf")
+        ::File.exist?("#{airflow_dir}/airflow.cfg") &&
+          !::File.read("#{airflow_dir}/airflow.cfg").include?("include #{airflow_dir}/airflow.cfg")
       end
     end
 
-    file "#{airflow_dir}/airflow.conf" do
-      content "include #{airflow_dir}/airflow.conf\n"
+    file "#{airflow_dir}/airflow.cfg" do
+      content "include #{airflow_dir}/airflow.cfg\n"
       owner user
       group group
       mode '0644'
       action :create_if_missing
     end
 
-    service 'airflow' do
-      service_name 'airflow'
-      ignore_failure true
-      supports status: true, restart: true, enable: true
-      action [:start, :enable]
+    execute 'initialize_airflow_db' do
+      command "airflow db migrate"
+      user new_resource.user      # <-- el usuario que corre Airflow (ej: 'airflow')
+      group new_resource.group
+      environment(
+        'AIRFLOW_HOME' => new_resource.airflow_dir,
+        'AIRFLOW__CORE__SQL_ALCHEMY_CONN' => "postgresql+psycopg2://#{new_resource.airflow_secrets['user']}:#{new_resource.airflow_secrets['pass']}@postgres/#{new_resource.cdomain}"
+      )
+      not_if { ::File.exist?("#{new_resource.data_dir}/airflow.db_initialized") }
+    end
+    
+    file "#{new_resource.data_dir}/airflow.db_initialized" do
+      content "initialized at #{Time.now}"
+      owner new_resource.user
+      group new_resource.group
+      mode '0644'
+      action :create_if_missing
+    end
+
+    %w(airflow-webserver airflow-scheduler).each do |svc|
+      service svc do
+        service_name svc
+        supports status: true, restart: true, enable: true
+        action [:enable, :start]
+      end
     end
 
     Chef::Log.info('Airflow cookbook has been processed')
@@ -93,11 +113,12 @@ action :remove do
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
 
-    service 'airflow' do
-      service_name 'airflow'
-      ignore_failure true
-      supports status: true, enable: true
-      action [:stop, :disable]
+    %w(airflow-webserver airflow-scheduler).each do |svc|
+      service svc do
+        service_name svc
+        action [:stop, :disable]
+        ignore_failure true
+      end
     end
 
     directory data_dir do
