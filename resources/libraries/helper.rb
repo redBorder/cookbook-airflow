@@ -17,10 +17,10 @@ module Airflow
       members
     end
 
-    def get_cluster_info(airflow_hosts, this_node)
+    def get_cluster_info(airflow_web_hosts, this_node)
       serf_members = get_serf_members
-      is_cluster = airflow_hosts.length > 1
-      master_host = is_cluster ? airflow_hosts.first : nil
+      is_cluster = airflow_web_hosts.length > 1
+      master_host = is_cluster ? airflow_web_hosts.first : nil
       master_ip = master_host ? serf_members[master_host] : nil
       is_master_here = (master_host == this_node)
 

@@ -32,8 +32,8 @@ backend = <%= @airflow_secrets['backend'] %>
 <% end %>
 
 [cluster]
-<% unless @airflow_hosts.empty? %>
-nodes = <%= @airflow_hosts.join(",") %>
+<% unless @airflow_web_hosts.empty? %>
+nodes = <%= @airflow_web_hosts.join(",") %>
 <% end %>
 <% if @cluster_info %>
 cluster_info = <%= @cluster_info.to_json %>
