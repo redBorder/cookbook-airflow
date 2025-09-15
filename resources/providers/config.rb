@@ -7,6 +7,7 @@ action :add do
   begin
     user = new_resource.user
     group = new_resource.group
+    port = new_resource.port
     cdomain = new_resource.cdomain
     airflow_dir = new_resource.airflow_dir
     data_dir = new_resource.data_dir
@@ -16,6 +17,9 @@ action :add do
     airflow_secrets = new_resource.airflow_secrets
     airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
     cluster_info = get_cluster_info(airflow_hosts, node['hostname'])
+    database_host = 'master.postgresql.service'
+    db_name = new_resource.db_name,
+    db_user = new_resource.db_user
 
     dnf_package 'airflow' do
       action :upgrade
@@ -39,30 +43,27 @@ action :add do
       mode '0755'
     end
 
-    template '/etc/airflow/airflow.cfg' do
+    template "#{airflow_dir}/airflow.cfg" do
       source 'airflow.conf.erb'
       owner 'airflow'
       group 'airflow'
       mode '0644'
+      cookbook 'airflow'
       variables(
         airflow_dir: airflow_dir,
         data_dir: data_dir,
         log_file: log_file,
         pid_file: pid_file,
+        port: port,
         cdomain: cdomain,
         airflow_hosts: airflow_hosts,
         airflow_secrets: airflow_secrets,
         airflow_password: airflow_secrets['pass'],
-        cluster_info: cluster_info
+        cluster_info: cluster_info,
+        database_host: database_host,
+        db_name: db_name,
+        db_user: db_user
       )
-    end
-
-    file "#{airflow_dir}/airflow.cfg" do
-      action :delete
-      only_if do
-        ::File.exist?("#{airflow_dir}/airflow.cfg") &&
-          !::File.read("#{airflow_dir}/airflow.cfg").include?("include #{airflow_dir}/airflow.cfg")
-      end
     end
 
     file "#{airflow_dir}/airflow.cfg" do
@@ -74,22 +75,23 @@ action :add do
     end
 
     execute 'initialize_airflow_db' do
-      command "airflow db migrate"
-      user new_resource.user      # <-- el usuario que corre Airflow (ej: 'airflow')
-      group new_resource.group
+      command "/opt/airflow/venv/bin/airflow db migrate"
+      user user
+      group group
       environment(
-        'AIRFLOW_HOME' => new_resource.airflow_dir,
-        'AIRFLOW__CORE__SQL_ALCHEMY_CONN' => "postgresql+psycopg2://#{new_resource.airflow_secrets['user']}:#{new_resource.airflow_secrets['pass']}@postgres/#{new_resource.cdomain}"
+        'AIRFLOW_HOME' => airflow_dir,
+        'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN' => "postgresql+psycopg2://#{airflow_secrets['user']}:#{airflow_secrets['pass']}@#{database_host}/#{db_name}"
       )
-      not_if { ::File.exist?("#{new_resource.data_dir}/airflow.db_initialized") }
+      not_if { ::File.exist?("#{data_dir}/airflow.db_initialized") }
+      notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
-    
-    file "#{new_resource.data_dir}/airflow.db_initialized" do
+
+    file "#{data_dir}/airflow.db_initialized" do
       content "initialized at #{Time.now}"
-      owner new_resource.user
-      group new_resource.group
+      owner user
+      group group
       mode '0644'
-      action :create_if_missing
+      action :nothing
     end
 
     %w(airflow-webserver airflow-scheduler).each do |svc|
@@ -160,7 +162,7 @@ action :register do
       json_query = Chef::JSONCompat.to_json(query)
 
       execute 'Register service in consul' do
-        command "curl -X PUT http://localhost:8400/v1/agent/service/register -d '#{json_query}' &>/dev/null"
+        command "curl -X PUT http://localhost:8500/v1/agent/service/register -d '#{json_query}' &>/dev/null"
         action :nothing
       end.run_action(:run)
 
@@ -176,7 +178,7 @@ action :deregister do
   begin
     if node['airflow']['registered']
       execute 'Deregister service in consul' do
-        command "curl -X PUT http://localhost:8400/v1/agent/service/deregister/airflow-#{node['hostname']} &>/dev/null"
+        command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/airflow-#{node['hostname']} &>/dev/null"
         action :nothing
       end.run_action(:run)
 

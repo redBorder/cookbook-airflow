@@ -1,0 +1,40 @@
+[core]
+executor = LocalExecutor
+sql_alchemy_conn = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %>@<%= @database_host %>/<%= @db_name %>
+dags_folder = <%= @airflow_dir %>/dags
+base_log_folder = <%= @data_dir %>/logs
+pid_file = <%= @pid_file %>
+load_examples = False
+
+[webserver]
+web_server_host = 0.0.0.0
+web_server_port = <%= @port %>
+base_url = http://<%= @cdomain %>:<%= @port %>
+default_ui_timezone = UTC
+
+[scheduler]
+job_heartbeat_sec = 5
+scheduler_heartbeat_sec = 5
+min_file_process_interval = 30
+dag_dir_list_interval = 60
+catchup_by_default = False
+max_active_runs_per_dag = 1
+
+[logging]
+base_log_folder = <%= @data_dir %>/logs
+remote_logging = False
+task_log_reader = task
+log_filename_template = {{ ti.dag_id }}/{{ ti.task_id }}/{{ ts }}/{{ try_number }}.log
+
+[secrets]
+<% if @airflow_secrets['backend'] %>
+backend = <%= @airflow_secrets['backend'] %>
+<% end %>
+
+[cluster]
+<% unless @airflow_hosts.empty? %>
+nodes = <%= @airflow_hosts.join(",") %>
+<% end %>
+<% if @cluster_info %>
+cluster_info = <%= @cluster_info.to_json %>
+<% end %>
