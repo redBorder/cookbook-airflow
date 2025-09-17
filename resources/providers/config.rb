@@ -7,19 +7,25 @@ action :add do
   begin
     user = new_resource.user
     group = new_resource.group
-    port = new_resource.port
+    airflow_port = new_resource.airflow_port
     cdomain = new_resource.cdomain
+    ipaddress_sync = new_resource.ipaddress_sync
     airflow_dir = new_resource.airflow_dir
     data_dir = new_resource.data_dir
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
+    airflow_env_dir = new_resource.airflow_env_dir
     airflow_web_hosts = new_resource.airflow_web_hosts
     airflow_secrets = new_resource.airflow_secrets
     airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
     cluster_info = get_cluster_info(airflow_web_hosts, node['hostname'])
     database_host = 'master.postgresql.service'
-    db_name = new_resource.db_name,
-    db_user = new_resource.db_user
+    db_name = 'airflow'
+    db_user = airflow_secrets['user'] unless airflow_secrets.empty?
+    db_port = 5432
+    api_user = new_resource.api_user
+    user_pass  = ensure_value("#{airflow_dir}/.airflow_password", provided: new_resource.user_pass, length: 32)
+    jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
 
     dnf_package 'airflow' do
       action :upgrade
@@ -45,8 +51,8 @@ action :add do
 
     template "#{airflow_dir}/airflow.cfg" do
       source 'airflow.conf.erb'
-      owner 'airflow'
-      group 'airflow'
+      owner user
+      group group
       mode '0644'
       cookbook 'airflow'
       variables(
@@ -54,16 +60,34 @@ action :add do
         data_dir: data_dir,
         log_file: log_file,
         pid_file: pid_file,
-        port: port,
+        airflow_env_dir: airflow_env_dir,
+        airflow_port: airflow_port,
         cdomain: cdomain,
+        ipsync: ipaddress_sync,
         airflow_web_hosts: airflow_web_hosts,
         airflow_secrets: airflow_secrets,
         airflow_password: airflow_secrets['pass'],
         cluster_info: cluster_info,
         database_host: database_host,
         db_name: db_name,
-        db_user: db_user
+        db_user: db_user,
+        db_port: db_port,
+        jwt_secret: jwt_secret
       )
+      notifies :restart, 'service[airflow-webserver]', :delayed
+    end
+
+    template "#{airflow_dir}/simple_auth_manager_passwords.json" do
+      source 'simple_auth_manager_passwords.json.conf.erb'
+      owner user
+      group group
+      mode '0644'
+      cookbook 'airflow'
+      variables(
+        api_user: api_user,
+        user_pass: user_pass
+      )
+      notifies :restart, 'service[airflow-webserver]', :delayed
     end
 
     file "#{airflow_dir}/airflow.cfg" do
@@ -74,16 +98,10 @@ action :add do
       action :create_if_missing
     end
 
-    execute 'initialize_airflow_db' do
-      command "/opt/airflow/venv/bin/airflow db migrate"
-      user user
+    link "/var/lib/airflow/airflow.cfg" do
+      to "/etc/airflow/airflow.cfg"
+      owner user
       group group
-      environment(
-        'AIRFLOW_HOME' => airflow_dir,
-        'AIRFLOW__DATABASE__SQL_ALCHEMY_CONN' => "postgresql+psycopg2://#{airflow_secrets['user']}:#{airflow_secrets['pass']}@#{database_host}/#{db_name}"
-      )
-      not_if { ::File.exist?("#{data_dir}/airflow.db_initialized") }
-      notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
 
     file "#{data_dir}/airflow.db_initialized" do
@@ -92,6 +110,17 @@ action :add do
       group group
       mode '0644'
       action :nothing
+    end
+
+    execute 'initialize_airflow_db' do
+      command "/opt/airflow/venv/bin/airflow db migrate"
+      user user
+      group group
+      environment(
+        'AIRFLOW_HOME' => '/var/lib/airflow'
+      )
+      not_if { ::File.exist?("#{data_dir}/airflow.db_initialized") }
+      notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
 
     %w(airflow-webserver airflow-scheduler).each do |svc|
@@ -114,6 +143,7 @@ action :remove do
     data_dir = new_resource.data_dir
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
+    airflow_env_dir = new_resource.airflow_env_dir
 
     %w(airflow-webserver airflow-scheduler).each do |svc|
       service svc do
@@ -145,6 +175,12 @@ action :remove do
       ignore_failure true
     end
 
+    file airflow_env_dir do
+      recursive true
+      action :delete
+      ignore_failure true
+    end
+
     Chef::Log.info('Airflow service has been removed')
   rescue => e
     Chef::Log.error(e.message)
@@ -153,39 +189,59 @@ end
 
 action :register do
   begin
-    unless node['airflow']['registered']
-      query = {}
-      query['ID'] = "airflow-#{node['hostname']}"
-      query['Name'] = 'airflow'
-      query['Address'] = node['ipaddress_sync']
-      query['Port'] = node['airflow']['port']
-      json_query = Chef::JSONCompat.to_json(query)
+    services = [
+      {
+        'ID' => "airflow-web-#{node['hostname']}",
+        'Name' => 'airflow-web',
+        'Address' => node['ipaddress_sync'],
+        'Port' => node['airflow']['web_port'] || 9191
+      },
+      {
+        'ID' => "airflow-scheduler-#{node['hostname']}",
+        'Name' => 'airflow-scheduler',
+        'Address' => node['ipaddress_sync'],
+        'Port' => node['airflow']['scheduler_port'] || 8793
+      }
+    ]
 
-      execute 'Register service in consul' do
-        command "curl -X PUT http://localhost:8500/v1/agent/service/register -d '#{json_query}' &>/dev/null"
-        action :nothing
-      end.run_action(:run)
+    services.each do |service|
+      service_key = service['Name'].gsub('-', '_')
+      
+      unless node['airflow'][service_key]['registered']
+        json_query = Chef::JSONCompat.to_json(service)
 
-      node.override['airflow']['registered'] = true
+        execute "Register #{service['Name']} service in consul" do
+          command "curl -X PUT http://localhost:8500/v1/agent/service/register -d '#{json_query}' &>/dev/null"
+          action :nothing
+        end.run_action(:run)
+
+        node.override['airflow'][service_key]['registered'] = true
+        Chef::Log.info("#{service['Name']} service has been registered in consul")
+      end
     end
-    Chef::Log.info('Airflow service has been registered in consul')
   rescue => e
-    Chef::Log.error(e.message)
+    Chef::Log.error("Error registering services: #{e.message}")
   end
 end
 
 action :deregister do
   begin
-    if node['airflow']['registered']
-      execute 'Deregister service in consul' do
-        command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/airflow-#{node['hostname']} &>/dev/null"
-        action :nothing
-      end.run_action(:run)
+    services = ['airflow-web', 'airflow-scheduler']
+    
+    services.each do |service_name|
+      service_key = service_name.gsub('-', '_')
+      
+      if node['airflow'][service_key]['registered']
+        execute "Deregister #{service_name} service from consul" do
+          command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/#{service_name}-#{node['hostname']} &>/dev/null"
+          action :nothing
+        end.run_action(:run)
 
-      node.override['airflow']['registered'] = false
+        node.override['airflow'][service_key]['registered'] = false
+        Chef::Log.info("#{service_name} service has been deregistered from consul")
+      end
     end
-    Chef::Log.info('Airflow service has been deregistered from consul')
   rescue => e
-    Chef::Log.error(e.message)
+    Chef::Log.error("Error deregistering services: #{e.message}")
   end
 end
