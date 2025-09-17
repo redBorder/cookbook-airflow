@@ -1,8 +1,6 @@
 # Cookbook:: airflow
 # Provider:: config
 
-unified_mode true
-
 include Airflow::Helper
 
 action :add do
@@ -21,10 +19,11 @@ action :add do
     airflow_secrets = new_resource.airflow_secrets
     airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
     cluster_info = get_cluster_info(airflow_web_hosts, node['hostname'])
-    database_host = 'master.postgresql.service'
+    # database_host = 'master.postgresql.service'
+    database_host = airflow_secrets['hostname'] unless airflow_secrets.empty?
     db_name = airflow_secrets['database'] unless airflow_secrets.empty?
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
-    db_port = 5432
+    db_port = airflow_secrets['port'] unless airflow_secrets.empty?
     api_user = new_resource.api_user
     user_pass  = ensure_value("#{airflow_dir}/.airflow_password", provided: new_resource.user_pass, length: 32)
     jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
