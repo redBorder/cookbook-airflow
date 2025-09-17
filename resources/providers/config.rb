@@ -229,18 +229,21 @@ end
 action :deregister do
   begin
     services = %w(airflow-web airflow-scheduler)
+    
     services.each do |service_name|
       service_key = service_name.gsub('-', '_')
-      next if node['airflow'][service_key]['registered']
-        execute "Deregister #{service_name} service from consul" do
-          command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/#{service_name}-#{node['hostname']} &>/dev/null"
-          action :nothing
-        end.run_action(:run)
+      
+      next unless node['airflow'][service_key]['registered']
 
-        node.override['airflow'][service_key]['registered'] = false
-        Chef::Log.info("#{service_name} service has been deregistered from consul")
-      end
+      execute "Deregister #{service_name} service from consul" do
+        command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/#{service_name}-#{node['hostname']} &>/dev/null"
+        action :nothing
+      end.run_action(:run)
+
+      node.override['airflow'][service_key]['registered'] = false
+      Chef::Log.info("#{service_name} service has been deregistered from consul")
     end
+
   rescue => e
     Chef::Log.error("Error deregistering services: #{e.message}")
   end
