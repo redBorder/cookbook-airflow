@@ -34,7 +34,7 @@ action :add do
     end
 
     execute 'create_user' do
-      command '/usr/sbin/useradd -r #{user} -s /sbin/nologin'
+      command "/usr/sbin/useradd -r #{user} -s /sbin/nologin"
       ignore_failure true
       not_if "getent passwd #{user}"
     end
@@ -101,7 +101,7 @@ action :add do
     end
 
     link '/var/lib/airflow/airflow.cfg' do
-      to "/etc/airflow/airflow.cfg"
+      to '/etc/airflow/airflow.cfg'
       owner user
       group group
     end
@@ -203,7 +203,7 @@ action :register do
         'Name' => 'airflow-scheduler',
         'Address' => node['ipaddress_sync'],
         'Port' => node['airflow']['scheduler_port'] || 8793,
-      }
+      },
     ]
 
     services.each do |service|
@@ -221,7 +221,6 @@ action :register do
       node.override['airflow'][service_key]['registered'] = true
       Chef::Log.info("#{service['Name']} service has been registered in consul")
     end
-
   rescue => e
     Chef::Log.error("Error registering services: #{e.message}")
   end
@@ -229,12 +228,10 @@ end
 
 action :deregister do
   begin
-    services = %w[airflow-web airflow-scheduler]
-    
+    services = %w(airflow-web airflow-scheduler)
     services.each do |service_name|
       service_key = service_name.gsub('-', '_')
-      
-      if node['airflow'][service_key]['registered']
+      next if node['airflow'][service_key]['registered']
         execute "Deregister #{service_name} service from consul" do
           command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/#{service_name}-#{node['hostname']} &>/dev/null"
           action :nothing
