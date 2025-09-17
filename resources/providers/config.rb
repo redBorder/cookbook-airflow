@@ -1,6 +1,8 @@
 # Cookbook:: airflow
 # Provider:: config
 
+unified_mode true
+
 include Airflow::Helper
 
 action :add do
@@ -206,22 +208,19 @@ action :register do
 
     services.each do |service|
       service_key = service['Name'].gsub('-', '_')
-
+    
       next if node['airflow'][service_key]['registered']
-        json_query = Chef::JSONCompat.to_json(service)
-
-        execute "Register #{service['Name']} service in consul" do
-          command "curl -X PUT http://localhost:8500/v1/agent/service/register -d '#{json_query}' &>/dev/null"
-          action :nothing
-        end.run_action(:run)
-
-        node.override['airflow'][service_key]['registered'] = true
-        Chef::Log.info("#{service['Name']} service has been registered in consul")
-      end
+    
+      json_query = Chef::JSONCompat.to_json(service)
+    
+      execute "Register #{service['Name']} service in consul" do
+        command "curl -X PUT http://localhost:8500/v1/agent/service/register -d '#{json_query}' &>/dev/null"
+        action :nothing
+      end.run_action(:run)
+    
+      node.override['airflow'][service_key]['registered'] = true
+      Chef::Log.info("#{service['Name']} service has been registered in consul")
     end
-  rescue => e
-    Chef::Log.error("Error registering services: #{e.message}")
-  end
 end
 
 action :deregister do
