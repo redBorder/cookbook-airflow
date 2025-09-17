@@ -20,7 +20,7 @@ action :add do
     airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
     cluster_info = get_cluster_info(airflow_web_hosts, node['hostname'])
     database_host = 'master.postgresql.service'
-    db_name = 'airflow'
+    db_name = airflow_secrets['database'] unless airflow_secrets.empty?
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
     db_port = 5432
     api_user = new_resource.api_user
