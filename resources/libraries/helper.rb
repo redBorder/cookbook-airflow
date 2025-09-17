@@ -1,6 +1,5 @@
 module Airflow
   module Helper
-
     def get_serf_members
       serf_output = `serf members`
       members = {}
@@ -48,6 +47,5 @@ module Airflow
         value
       end
     end
-
   end
 end

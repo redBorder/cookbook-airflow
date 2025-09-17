@@ -32,7 +32,7 @@ action :add do
     end
 
     execute 'create_user' do
-      command "/usr/sbin/useradd -r #{user} -s /sbin/nologin"
+      command '/usr/sbin/useradd -r #{user} -s /sbin/nologin'
       ignore_failure true
       not_if "getent passwd #{user}"
     end
@@ -66,7 +66,7 @@ action :add do
         ipsync: ipaddress_sync,
         airflow_web_hosts: airflow_web_hosts,
         airflow_secrets: airflow_secrets,
-        airflow_password: airflow_secrets['pass'],
+        airflow_password: airflow_password,
         cluster_info: cluster_info,
         database_host: database_host,
         db_name: db_name,
@@ -98,7 +98,7 @@ action :add do
       action :create_if_missing
     end
 
-    link "/var/lib/airflow/airflow.cfg" do
+    link '/var/lib/airflow/airflow.cfg' do
       to "/etc/airflow/airflow.cfg"
       owner user
       group group
@@ -113,7 +113,7 @@ action :add do
     end
 
     execute 'initialize_airflow_db' do
-      command "/opt/airflow/venv/bin/airflow db migrate"
+      command '/opt/airflow/venv/bin/airflow db migrate'
       user user
       group group
       environment(
@@ -194,20 +194,20 @@ action :register do
         'ID' => "airflow-web-#{node['hostname']}",
         'Name' => 'airflow-web',
         'Address' => node['ipaddress_sync'],
-        'Port' => node['airflow']['web_port'] || 9191
+        'Port' => node['airflow']['web_port'] || 9191,
       },
       {
         'ID' => "airflow-scheduler-#{node['hostname']}",
         'Name' => 'airflow-scheduler',
         'Address' => node['ipaddress_sync'],
-        'Port' => node['airflow']['scheduler_port'] || 8793
+        'Port' => node['airflow']['scheduler_port'] || 8793,
       }
     ]
 
     services.each do |service|
       service_key = service['Name'].gsub('-', '_')
-      
-      unless node['airflow'][service_key]['registered']
+
+      next if node['airflow'][service_key]['registered']
         json_query = Chef::JSONCompat.to_json(service)
 
         execute "Register #{service['Name']} service in consul" do
@@ -226,7 +226,7 @@ end
 
 action :deregister do
   begin
-    services = ['airflow-web', 'airflow-scheduler']
+    services = %w[airflow-web airflow-scheduler]
     
     services.each do |service_name|
       service_key = service_name.gsub('-', '_')
