@@ -42,11 +42,3 @@ jwt_secret = <%= @jwt_secret %>
 <% if @airflow_secrets['backend'] %>
 backend = <%= @airflow_secrets['backend'] %>
 <% end %>
-
-[cluster]
-<% unless @airflow_web_hosts.empty? %>
-nodes = <%= @airflow_web_hosts.join(",") %>
-<% end %>
-<% if @cluster_info %>
-cluster_info = <%= @cluster_info.to_json %>
-<% end %>
