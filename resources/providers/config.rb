@@ -22,7 +22,7 @@ action :add do
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
     db_port = airflow_secrets['port'] unless airflow_secrets.empty?
     api_user = new_resource.api_user
-    user_pass  = ensure_value("#{airflow_dir}/.airflow_password", provided: new_resource.user_pass, length: 32)
+    user_pass  = ensure_value("#{airflow_dir}/.airflow_password", length: 32)
     jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
 
     dnf_package 'airflow' do

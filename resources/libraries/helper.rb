@@ -4,9 +4,7 @@ module Airflow
     # - provided: if you pass it, it returns it directly.
     # - path: file where the value is saved/read.
     # - length: length in hexadecimal characters (e.g., 32 = 16 bytes).
-    def ensure_value(path, provided: nil, length: 32)
-      return provided unless provided.nil? || provided.empty?
-
+    def ensure_value(path, length: 32)
       if ::File.exist?(path)
         ::File.read(path).strip
       else
