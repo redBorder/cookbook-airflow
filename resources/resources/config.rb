@@ -9,7 +9,6 @@ default_action :add
 attribute :user, kind_of: String, default: 'airflow'
 attribute :group, kind_of: String, default: 'airflow'
 attribute :airflow_port, kind_of: Integer, default: 9191
-attribute :airflow_web_hosts, kind_of: Array, default: []
 attribute :airflow_secrets, kind_of: Hash, default: {}
 attribute :ipaddress_sync, kind_of: String, default: '127.0.0.1'
 attribute :cdomain, kind_of: String, default: 'redborder.cluster'

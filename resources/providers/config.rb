@@ -15,11 +15,8 @@ action :add do
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
     airflow_env_dir = new_resource.airflow_env_dir
-    airflow_web_hosts = new_resource.airflow_web_hosts
     airflow_secrets = new_resource.airflow_secrets
     airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
-    cluster_info = get_cluster_info(airflow_web_hosts, node['hostname'])
-    # database_host = 'master.postgresql.service'
     database_host = airflow_secrets['hostname'] unless airflow_secrets.empty?
     db_name = airflow_secrets['database'] unless airflow_secrets.empty?
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
@@ -65,10 +62,8 @@ action :add do
         airflow_port: airflow_port,
         cdomain: cdomain,
         ipsync: ipaddress_sync,
-        airflow_web_hosts: airflow_web_hosts,
         airflow_secrets: airflow_secrets,
         airflow_password: airflow_password,
-        cluster_info: cluster_info,
         database_host: database_host,
         db_name: db_name,
         db_user: db_user,
