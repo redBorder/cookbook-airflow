@@ -25,7 +25,7 @@ action :add do
     user_pass  = ensure_value("#{airflow_dir}/.airflow_password", length: 32)
     jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
 
-    dnf_package 'airflow' do
+    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
     end
 
@@ -140,6 +140,10 @@ action :remove do
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
     airflow_env_dir = new_resource.airflow_env_dir
+
+    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
+      action :remove
+    end
 
     %w(airflow-webserver airflow-scheduler).each do |svc|
       service svc do
