@@ -86,14 +86,6 @@ action :add do
       notifies :restart, 'service[airflow-webserver]', :delayed
     end
 
-    file "#{airflow_dir}/airflow.cfg" do
-      content "include #{airflow_dir}/airflow.cfg\n"
-      owner user
-      group group
-      mode '0644'
-      action :create_if_missing
-    end
-
     link '/var/lib/airflow/airflow.cfg' do
       to '/etc/airflow/airflow.cfg'
       owner user
