@@ -73,7 +73,7 @@ action :add do
       notifies :restart, 'service[airflow-webserver]', :delayed
     end
 
-    template "#{airflow_dir}/simple_auth_manager_passwords.json" do
+    template "#{airflow_env_dir}/simple_auth_manager_passwords.json" do
       source 'simple_auth_manager_passwords.json.conf.erb'
       owner user
       group group
@@ -165,18 +165,18 @@ action :remove do
       ignore_failure true
     end
 
+    directory airflow_env_dir do
+      recursive true
+      action :delete
+      ignore_failure true
+    end
+
     file log_file do
       action :delete
       ignore_failure true
     end
 
     file pid_file do
-      action :delete
-      ignore_failure true
-    end
-
-    file airflow_env_dir do
-      recursive true
       action :delete
       ignore_failure true
     end
@@ -193,7 +193,7 @@ action :register do
       {
         'ID' => "airflow-web-#{node['hostname']}",
         'Name' => 'airflow-web',
-        'Address' => node['ipaddress_sync'],
+        'Address' => node['ipaddress'],
         'Port' => node['airflow']['web_port'] || 9191,
       },
       {
