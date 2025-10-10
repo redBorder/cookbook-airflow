@@ -9,6 +9,7 @@ action :add do
     group = new_resource.group
     airflow_port = new_resource.airflow_port
     cdomain = new_resource.cdomain
+    ipaddress_mgt = new_resource.ipaddress_mgt
     ipaddress_sync = new_resource.ipaddress_sync
     airflow_dir = new_resource.airflow_dir
     data_dir = new_resource.data_dir
@@ -61,7 +62,7 @@ action :add do
         airflow_env_dir: airflow_env_dir,
         airflow_port: airflow_port,
         cdomain: cdomain,
-        ipsync: ipaddress_sync,
+        ipmgt: ipaddress_mgt,
         airflow_secrets: airflow_secrets,
         airflow_password: airflow_password,
         database_host: database_host,
