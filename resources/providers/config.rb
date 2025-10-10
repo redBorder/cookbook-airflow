@@ -10,7 +10,6 @@ action :add do
     airflow_port = new_resource.airflow_port
     cdomain = new_resource.cdomain
     ipaddress_mgt = new_resource.ipaddress_mgt
-    ipaddress_sync = new_resource.ipaddress_sync
     airflow_dir = new_resource.airflow_dir
     data_dir = new_resource.data_dir
     log_file = new_resource.log_file
