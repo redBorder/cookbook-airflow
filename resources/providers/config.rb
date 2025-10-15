@@ -133,16 +133,16 @@ action :remove do
     pid_file = new_resource.pid_file
     airflow_env_dir = new_resource.airflow_env_dir
 
-    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
-      action :remove
-    end
-
     %w(airflow-webserver airflow-scheduler).each do |svc|
       service svc do
         service_name svc
         action [:stop, :disable]
         ignore_failure true
       end
+    end
+
+    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
+      action :remove
     end
 
     directory data_dir do
