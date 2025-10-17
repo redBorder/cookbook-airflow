@@ -9,7 +9,7 @@ action :add do
     group = new_resource.group
     airflow_port = new_resource.airflow_port
     cdomain = new_resource.cdomain
-    ipaddress_sync = new_resource.ipaddress_sync
+    ipaddress_mgt = new_resource.ipaddress_mgt
     airflow_dir = new_resource.airflow_dir
     data_dir = new_resource.data_dir
     log_file = new_resource.log_file
@@ -25,7 +25,7 @@ action :add do
     user_pass  = ensure_value("#{airflow_dir}/.airflow_password", length: 32)
     jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
 
-    dnf_package 'airflow' do
+    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
     end
 
@@ -61,7 +61,7 @@ action :add do
         airflow_env_dir: airflow_env_dir,
         airflow_port: airflow_port,
         cdomain: cdomain,
-        ipsync: ipaddress_sync,
+        ipmgt: ipaddress_mgt,
         airflow_secrets: airflow_secrets,
         airflow_password: airflow_password,
         database_host: database_host,
@@ -73,7 +73,7 @@ action :add do
       notifies :restart, 'service[airflow-webserver]', :delayed
     end
 
-    template "#{airflow_dir}/simple_auth_manager_passwords.json" do
+    template "#{airflow_env_dir}/simple_auth_manager_passwords.json" do
       source 'simple_auth_manager_passwords.json.conf.erb'
       owner user
       group group
@@ -84,14 +84,6 @@ action :add do
         user_pass: user_pass
       )
       notifies :restart, 'service[airflow-webserver]', :delayed
-    end
-
-    file "#{airflow_dir}/airflow.cfg" do
-      content "include #{airflow_dir}/airflow.cfg\n"
-      owner user
-      group group
-      mode '0644'
-      action :create_if_missing
     end
 
     link '/var/lib/airflow/airflow.cfg' do
@@ -149,6 +141,10 @@ action :remove do
       end
     end
 
+    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
+      action :remove
+    end
+
     directory data_dir do
       recursive true
       action :delete
@@ -161,18 +157,18 @@ action :remove do
       ignore_failure true
     end
 
+    directory airflow_env_dir do
+      recursive true
+      action :delete
+      ignore_failure true
+    end
+
     file log_file do
       action :delete
       ignore_failure true
     end
 
     file pid_file do
-      action :delete
-      ignore_failure true
-    end
-
-    file airflow_env_dir do
-      recursive true
       action :delete
       ignore_failure true
     end
@@ -189,7 +185,7 @@ action :register do
       {
         'ID' => "airflow-web-#{node['hostname']}",
         'Name' => 'airflow-web',
-        'Address' => node['ipaddress_sync'],
+        'Address' => node['ipaddress'],
         'Port' => node['airflow']['web_port'] || 9191,
       },
       {
