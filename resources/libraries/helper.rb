@@ -55,7 +55,7 @@ module Airflow
 
       {
         celery_worker_concurrency: celery_concurrency,
-        webserver_workers: webserver_workers
+        webserver_workers: webserver_workers,
       }
     end
   end
