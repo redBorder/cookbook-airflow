@@ -1,5 +1,5 @@
 # Cookbook:: airflow
-# Provider:: config
+# Provider:: common
 
 include Airflow::Helper
 
@@ -111,14 +111,6 @@ action :add do
       notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
 
-    %w(airflow-webserver airflow-scheduler).each do |svc|
-      service svc do
-        service_name svc
-        supports status: true, restart: true, enable: true
-        action [:enable, :start]
-      end
-    end
-
     Chef::Log.info('Airflow cookbook has been processed')
   rescue => e
     Chef::Log.error(e.message)
@@ -132,14 +124,6 @@ action :remove do
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
     airflow_env_dir = new_resource.airflow_env_dir
-
-    %w(airflow-webserver airflow-scheduler).each do |svc|
-      service svc do
-        service_name svc
-        action [:stop, :disable]
-        ignore_failure true
-      end
-    end
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :remove
@@ -176,64 +160,5 @@ action :remove do
     Chef::Log.info('Airflow service has been removed')
   rescue => e
     Chef::Log.error(e.message)
-  end
-end
-
-action :register do
-  begin
-    services = [
-      {
-        'ID' => "airflow-web-#{node['hostname']}",
-        'Name' => 'airflow-web',
-        'Address' => node['ipaddress'],
-        'Port' => node['airflow']['web_port'] || 9191,
-      },
-      {
-        'ID' => "airflow-scheduler-#{node['hostname']}",
-        'Name' => 'airflow-scheduler',
-        'Address' => node['ipaddress_sync'],
-        'Port' => node['airflow']['scheduler_port'] || 8793,
-      },
-    ]
-
-    services.each do |service|
-      service_key = service['Name'].gsub('-', '_')
-
-      next if node['airflow'][service_key]['registered']
-
-      json_query = Chef::JSONCompat.to_json(service)
-
-      execute "Register #{service['Name']} service in consul" do
-        command "curl -X PUT http://localhost:8500/v1/agent/service/register -d #{json_query.dump} &>/dev/null"
-        action :nothing
-      end.run_action(:run)
-
-      node.override['airflow'][service_key]['registered'] = true
-      Chef::Log.info("#{service['Name']} service has been registered in consul")
-    end
-  rescue => e
-    Chef::Log.error("Error registering services: #{e.message}")
-  end
-end
-
-action :deregister do
-  begin
-    services = %w(airflow-web airflow-scheduler)
-
-    services.each do |service_name|
-      service_key = service_name.gsub('-', '_')
-
-      next unless node['airflow'][service_key]['registered']
-
-      execute "Deregister #{service_name} service from consul" do
-        command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/#{service_name}-#{node['hostname']} &>/dev/null"
-        action :nothing
-      end.run_action(:run)
-
-      node.override['airflow'][service_key]['registered'] = false
-      Chef::Log.info("#{service_name} service has been deregistered from consul")
-    end
-  rescue => e
-    Chef::Log.error("Error deregistering services: #{e.message}")
   end
 end

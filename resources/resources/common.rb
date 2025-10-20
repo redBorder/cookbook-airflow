@@ -1,9 +1,7 @@
-unified_mode true
-
 # Cookbook:: airflow
-# Resource:: config
+# Resource:: common
 
-actions :add, :remove, :register, :deregister
+actions :add, :remove
 default_action :add
 
 attribute :user, kind_of: String, default: 'airflow'
@@ -11,7 +9,6 @@ attribute :group, kind_of: String, default: 'airflow'
 attribute :airflow_port, kind_of: Integer, default: 9191
 attribute :airflow_secrets, kind_of: Hash, default: {}
 attribute :ipaddress_mgt, kind_of: String, default: '127.0.0.1'
-attribute :ipaddress_sync, kind_of: String, default: '127.0.0.1'
 attribute :cdomain, kind_of: String, default: 'redborder.cluster'
 attribute :api_user, kind_of: String, default: 'admin'
 
