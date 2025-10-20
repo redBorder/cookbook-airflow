@@ -1,5 +1,8 @@
+# =========================================
+# Core configuration
+# =========================================
 [core]
-executor = LocalExecutor
+executor = <%= @is_celery_worker_required ? 'CeleryExecutor' : 'LocalExecutor' %>
 dags_folder = <%= @airflow_dir %>/dags
 base_log_folder = <%= @data_dir %>/logs
 pid_file = <%= @pid_file %>
@@ -9,38 +12,76 @@ auth_backend = simple
 simple_auth_manager_all_admins = False
 simple_auth_manager_passwords_file = <%= @airflow_env_dir %>/simple_auth_manager_passwords.json
 
+# =========================================
+# Database configuration
+# =========================================
 [database]
 sql_alchemy_conn = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %>@<%= @database_host %>:<%= @db_port %>/<%= @db_name %>
 
+# =========================================
+# Webserver configuration
+# =========================================
 [webserver]
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
 default_ui_timezone = UTC
+workers = <%= @is_celery_worker_required ? @webserver_workers : 1 %>
 
+# =========================================
+# Scheduler configuration
+# =========================================
 [scheduler]
 job_heartbeat_sec = 5
 scheduler_heartbeat_sec = 5
 min_file_process_interval = 30
 catchup_by_default = False
 max_active_runs_per_dag = 1
+scheduler_queues = <%= @is_celery_worker_required ? 'default' : '' %>
 
+# =========================================
+# API configuration
+# =========================================
 [api]
 host = 0.0.0.0
 port = <%= @airflow_port %>
 
+# =========================================
+# DAG processor
+# =========================================
 [dag_processor]
 refresh_interval = 60
 
+# =========================================
+# Logging
+# =========================================
 [logging]
 base_log_folder = <%= @data_dir %>/logs
 remote_logging = False
 task_log_reader = task
 log_filename_template = {{ ti.dag_id }}/{{ ti.task_id }}/{{ ts }}/{{ try_number }}.log
 
+# =========================================
+# API Authentication
+# =========================================
 [api_auth]
 auth_backend = simple
 jwt_secret = <%= @jwt_secret %>
 
+# =========================================
+# Secrets backend
+# =========================================
 [secrets]
 <% if @airflow_secrets['backend'] %>
 backend = <%= @airflow_secrets['backend'] %>
+<% end %>
+
+<% if @is_celery_worker_required %>
+# =========================================
+# Celery configuration
+# =========================================
+[celery]
+broker_url = redis://<%= @redis_host.first %>:<%= @redis_port %>/1
+result_backend = redis://<%= @redis_host.first %>:<%= @redis_port %>/2
+worker_concurrency = <%= @celery_worker_concurrency %>
+task_acks_late = True
+worker_prefetch_multiplier = 1
 <% end %>

@@ -24,6 +24,14 @@ action :add do
     api_user = new_resource.api_user
     user_pass  = ensure_value("#{airflow_dir}/.airflow_password", length: 32)
     jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
+    airflow_scheduler_hosts = new_resource.airflow_scheduler_hosts
+    airflow_webserver_hosts = new_resource.airflow_webserver_hosts
+    redis_hosts = new_resource.redis_hosts
+    redis_port = new_resource.redis_port
+    cpu_cores = new_resource.cpu_cores
+    ram_memory_kb = new_resource.ram_memory_kb
+    is_celery_worker_required = enables_celery_worker?(airflow_scheduler_hosts, airflow_webserver_hosts)
+    workers = airflow_workers(cpu_cores, ram_memory_kb)
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
@@ -68,7 +76,12 @@ action :add do
         db_name: db_name,
         db_user: db_user,
         db_port: db_port,
-        jwt_secret: jwt_secret
+        jwt_secret: jwt_secret,
+        redis_hosts: redis_hosts,
+        redis_port: redis_port,
+        celery_worker_concurrency: workers[:celery_worker_concurrency],
+        webserver_workers: workers[:webserver_workers],
+        is_celery_worker_required: is_celery_worker_required
       )
       notifies :restart, 'service[airflow-webserver]', :delayed
     end
@@ -109,6 +122,22 @@ action :add do
       )
       not_if { ::File.exist?("#{data_dir}/airflow.db_initialized") }
       notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
+    end
+
+    if is_celery_worker_required
+      service 'airflow-celery-worker' do
+        service_name 'airflow-celery-worker'
+        ignore_failure true
+        supports status: true, restart: true, enable: true
+        action [:start, :enable]
+      end
+    else
+      service 'airflow-celery-worker' do
+        service_name 'airflow-celery-worker'
+        ignore_failure true
+        supports status: true, enable: true
+        action [:stop, :disable]
+      end
     end
 
     Chef::Log.info('Airflow cookbook has been processed')
