@@ -35,7 +35,6 @@ scheduler_heartbeat_sec = 5
 min_file_process_interval = 30
 catchup_by_default = False
 max_active_runs_per_dag = 1
-scheduler_queues = <%= @is_celery_worker_required ? 'default' : '' %>
 
 # =========================================
 # API configuration
@@ -64,7 +63,7 @@ log_filename_template = {{ ti.dag_id }}/{{ ti.task_id }}/{{ ts }}/{{ try_number 
 # =========================================
 [api_auth]
 auth_backend = simple
-jwt_secret = <%= @jwt_secret %>
+jwt_secret = <%= @airflow_password %>
 
 # =========================================
 # Secrets backend

@@ -22,8 +22,6 @@ action :add do
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
     db_port = airflow_secrets['port'] unless airflow_secrets.empty?
     api_user = new_resource.api_user
-    user_pass  = ensure_value("#{airflow_dir}/.airflow_password", length: 32)
-    jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
     airflow_scheduler_hosts = new_resource.airflow_scheduler_hosts
     airflow_webserver_hosts = new_resource.airflow_webserver_hosts
     redis_hosts = new_resource.redis_hosts
@@ -76,14 +74,21 @@ action :add do
         db_name: db_name,
         db_user: db_user,
         db_port: db_port,
-        jwt_secret: jwt_secret,
         redis_hosts: redis_hosts,
         redis_port: redis_port,
         celery_worker_concurrency: workers[:celery_worker_concurrency],
         webserver_workers: workers[:webserver_workers],
         is_celery_worker_required: is_celery_worker_required
       )
-      notifies :restart, 'service[airflow-webserver]', :delayed
+    end
+
+    template "#{data_dir}/jwt_secret" do
+      source 'jwt_secret.erb'
+      owner user
+      group group
+      mode '0644'
+      cookbook 'airflow'
+      variables(airflow_password: airflow_password)
     end
 
     template "#{airflow_env_dir}/simple_auth_manager_passwords.json" do
@@ -94,9 +99,8 @@ action :add do
       cookbook 'airflow'
       variables(
         api_user: api_user,
-        user_pass: user_pass
+        airflow_password: airflow_password
       )
-      notifies :restart, 'service[airflow-webserver]', :delayed
     end
 
     link '/var/lib/airflow/airflow.cfg' do
