@@ -15,7 +15,7 @@ attribute :airflow_scheduler_hosts, kind_of: Array, default: []
 attribute :airflow_webserver_hosts, kind_of: Array, default: []
 attribute :redis_hosts, kind_of: Array, default: []
 attribute :redis_port, kind_of: Integer, default: 26379
-attribute :redis_sentinel_port, kind_of: Integer, default: 26380
+attribute :redis_secrets, kind_of: Hash, default: {}
 attribute :cpu_cores, kind_of: Integer, default: 4
 attribute :ram_memory_kb, kind_of: Integer, default: 16777216
 
@@ -23,5 +23,5 @@ attribute :ram_memory_kb, kind_of: Integer, default: 16777216
 attribute :airflow_dir, kind_of: String, default: '/etc/airflow'
 attribute :data_dir, kind_of: String, default: '/var/lib/airflow'
 attribute :log_file, kind_of: String, default: '/var/log/airflow/airflow.log'
-attribute :pid_file, kind_of: String, default: '/var/run/airflow/airflow.pid'
+attribute :pid_file, kind_of: String, default: '/var/run/airflow/airflow-scheduler.pid'
 attribute :airflow_env_dir, kind_of: String, default: '/opt/airflow'

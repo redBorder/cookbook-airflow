@@ -78,16 +78,8 @@ backend = <%= @airflow_secrets['backend'] %>
 # Celery configuration
 # =========================================
 [celery]
-<% if @redis_hosts.length > 1 %>
-# Redis Sentinel setup
-broker_url = redis+sentinel://<%= @redis_hosts.join(',') %>:<%= @redis_sentinel_port %>/1
-broker_transport_options = {"master_name": "<%= @redis_hosts.first %>"}
-result_backend = redis+sentinel://<%= @redis_hosts.join(',') %>:<%= @redis_sentinel_port %>/2
-<% else %>
-# Single Redis node
-broker_url = redis://<%= @redis_hosts.first %>:<%= @redis_port %>/1
-result_backend = redis://<%= @redis_hosts.first %>:<%= @redis_port %>/2
-<% end %>
+broker_url = redis://default:<%= @redis_password %>@<%= @redis_hosts.first %>:<%= @redis_port %>/1
+result_backend = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %>@<%= @database_host %>:<%= @db_port %>/<%= @db_name %>
 worker_concurrency = <%= @celery_worker_concurrency %>
 task_acks_late = True
 worker_prefetch_multiplier = 1

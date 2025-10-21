@@ -26,7 +26,8 @@ action :add do
     airflow_webserver_hosts = new_resource.airflow_webserver_hosts
     redis_hosts = new_resource.redis_hosts
     redis_port = new_resource.redis_port
-    redis_sentinel_port = new_resource.redis_sentinel_port
+    redis_secrets = new_resource.redis_secrets
+    redis_password = redis_secrets['pass'] unless redis_secrets.empty?
     cpu_cores = new_resource.cpu_cores
     ram_memory_kb = new_resource.ram_memory_kb
     is_celery_worker_required = enables_celery_worker?(airflow_scheduler_hosts, airflow_webserver_hosts)
@@ -77,7 +78,7 @@ action :add do
         db_port: db_port,
         redis_hosts: redis_hosts,
         redis_port: redis_port,
-        redis_sentinel_port: redis_sentinel_port,
+        redis_password: redis_password,
         celery_worker_concurrency: workers[:celery_worker_concurrency],
         webserver_workers: workers[:webserver_workers],
         is_celery_worker_required: is_celery_worker_required
