@@ -15,6 +15,7 @@ attribute :airflow_scheduler_hosts, kind_of: Array, default: []
 attribute :airflow_webserver_hosts, kind_of: Array, default: []
 attribute :redis_hosts, kind_of: Array, default: []
 attribute :redis_port, kind_of: Integer, default: 26379
+attribute :redis_sentinel_port, kind_of: Integer, default: 26380
 attribute :cpu_cores, kind_of: Integer, default: 4
 attribute :ram_memory_kb, kind_of: Integer, default: 16777216
 
