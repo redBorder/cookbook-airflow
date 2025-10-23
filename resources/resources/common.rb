@@ -17,6 +17,8 @@ attribute :redis_secrets, kind_of: Hash, default: {}
 attribute :cpu_cores, kind_of: Integer, default: 4
 attribute :ram_memory_kb, kind_of: Integer, default: 16777216
 attribute :enables_celery_worker, kind_of: [TrueClass, FalseClass], default: false
+attribute :malware_access_key, kind_of: String, default: 'malware'
+attribute :malware_secret_key, kind_of: String, default: 'malware'
 
 # Airflow configuration attributes
 attribute :airflow_dir, kind_of: String, default: '/etc/airflow'

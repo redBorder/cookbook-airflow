@@ -30,7 +30,8 @@ action :add do
     ram_memory_kb = new_resource.ram_memory_kb
     workers = airflow_workers(cpu_cores, ram_memory_kb)
     enables_celery_worker = new_resource.enables_celery_worker
-
+    s3_malware_user = new_resource.malware_access_key
+    s3_malware_password = new_resource.malware_secret_key
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
     end
@@ -133,6 +134,87 @@ action :add do
       service 'airflow-celery-worker' do
         service_name 'airflow-celery-worker'
         ignore_failure true
+        supports status: true, restart: true, enable: true
+        action [:start, :enable]
+      end
+    else
+      service 'airflow-celery-worker' do
+        service_name 'airflow-celery-worker'
+        ignore_failure true
+        supports status: true, enable: true
+        action [:stop, :disable]
+      end
+    end
+
+    # Conexion con MinIO
+    # Variables de la receta
+    user = user
+    group = group
+    airflow_venv_bin = '/opt/airflow/venv/bin'
+    minio_conn_id = 'minio_conn'
+    minio_endpoint = 'http://s3.service:9000'
+    minio_access_key = s3_malware_user
+    minio_secret_key = s3_malware_password
+
+    # Comando para añadir la conexión S3
+    # El tipo de conexión para MinIO
+    # Usamos 'extra' para especificar el endpoint de MinIO
+
+    execute "add_minio_s3_connection" do
+      command <<-EOC
+        #{airflow_venv_bin}/airflow connections add #{minio_conn_id} \
+          --conn-type 'aws' \
+          --conn-login '#{minio_access_key}' \
+          --conn-password '#{minio_secret_key}' \
+          --conn-extra '{"host": "#{minio_endpoint}", "aws_access_key_id": "#{minio_access_key}", "aws_secret_access_key": "#{minio_secret_key}", "endpoint_url": "#{minio_endpoint}", "region_name": "us-east-1"}'
+      EOC
+      user user
+      group group
+      environment(
+        'AIRFLOW_HOME' => '/var/lib/airflow'
+      )
+
+      # Solo ejecuta si la conexión NO existe aún.
+      # El comando 'connections get' devolverá un error si la conexión no existe.
+      not_if "#{airflow_venv_bin}/airflow connections get #{minio_conn_id}", :user => user, :environment => {'AIRFLOW_HOME' => '/var/lib/airflow'}
+    end
+
+    # Airflow DAGs
+    # Variables de la receta (Ajusta según tu configuración)
+    airflow_dags_folder = '/var/lib/airflow/dags'
+    user = user
+    group = group
+
+    # Lista de tus archivos DAG.
+    # Debes listar manualmente cada archivo que tengas en files/default/
+    dag_files = [
+      'dag_a.py',
+      'dag_b.py',
+    ]
+
+    # 1. Asegurar que la carpeta DAGs exista
+    directory airflow_dags_folder do
+      owner user
+      group group
+      mode '0755'
+      recursive true
+      action :create
+    end
+
+    # 2. Iterar sobre la lista de archivos y copiarlos
+    dag_files.each do |dag_filename|
+      cookbook_file "#{airflow_dags_folder}/#{dag_filename}" do
+        source dag_filename # El source debe coincidir con el nombre de archivo en files/default/
+        owner user
+        group group
+        mode '0644'
+        action :create
+      end
+    end
+
+    %w(airflow-webserver airflow-scheduler).each do |svc|
+      service svc do
+        service_name svc
         supports status: true, restart: true, enable: true
         action [:start, :enable]
       end
