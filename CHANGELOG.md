@@ -1,6 +1,11 @@
 cookbook-airflow CHANGELOG
 ===============
 
+## 0.2.0
+
+  - Rafa Gómez
+    - [18752c7] Feature/#23083 Make airflow compatible with a cluster-node environment (#5)
+
 ## 0.1.0
 
   - vimesa
