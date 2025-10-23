@@ -2,7 +2,7 @@
 # Core configuration
 # =========================================
 [core]
-executor = <%= @is_celery_worker_required ? 'CeleryExecutor' : 'LocalExecutor' %>
+executor = <%= @enables_celery_worker ? 'CeleryExecutor' : 'LocalExecutor' %>
 dags_folder = <%= @airflow_dir %>/dags
 base_log_folder = <%= @data_dir %>/logs
 pid_file = <%= @pid_file %>
@@ -24,7 +24,7 @@ sql_alchemy_conn = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %
 [webserver]
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
 default_ui_timezone = UTC
-workers = <%= @is_celery_worker_required ? @webserver_workers : 1 %>
+workers = <%= @enables_celery_worker ? @webserver_workers : 1 %>
 
 # =========================================
 # Scheduler configuration
@@ -73,7 +73,7 @@ jwt_secret = <%= @airflow_password %>
 backend = <%= @airflow_secrets['backend'] %>
 <% end %>
 
-<% if @is_celery_worker_required %>
+<% if @enables_celery_worker %>
 # =========================================
 # Celery configuration
 # =========================================

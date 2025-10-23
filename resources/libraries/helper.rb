@@ -1,18 +1,5 @@
 module Airflow
   module Helper
-    # Returns true if a Celery worker is required.
-    # Celery is needed when scheduler and webserver are NOT on the same node.
-    #
-    # @param scheduler_hosts [Array<String>] list of nodes running the scheduler
-    # @param webserver_hosts [Array<String>] list of nodes running the webserver
-    # @return [Boolean] true if celery worker is required
-    def enables_celery_worker?(scheduler_hosts, webserver_hosts)
-      return false if scheduler_hosts.nil? || webserver_hosts.nil?
-
-      all_hosts = (scheduler_hosts + webserver_hosts).uniq
-      all_hosts.size > 1
-    end
-
     # Calculates optimal number of workers for Celery and Airflow webserver based on node resources.
     #
     # @param cpu_cores [Integer] number of CPU cores on the node

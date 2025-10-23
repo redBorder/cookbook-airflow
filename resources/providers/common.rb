@@ -30,8 +30,8 @@ action :add do
     redis_password = redis_secrets['pass'] unless redis_secrets.empty?
     cpu_cores = new_resource.cpu_cores
     ram_memory_kb = new_resource.ram_memory_kb
-    is_celery_worker_required = enables_celery_worker?(airflow_scheduler_hosts, airflow_webserver_hosts)
     workers = airflow_workers(cpu_cores, ram_memory_kb)
+    enables_celery_worker = new_resource.enables_celery_worker
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
@@ -81,7 +81,7 @@ action :add do
         redis_password: redis_password,
         celery_worker_concurrency: workers[:celery_worker_concurrency],
         webserver_workers: workers[:webserver_workers],
-        is_celery_worker_required: is_celery_worker_required
+        enables_celery_worker: enables_celery_worker
       )
     end
 
@@ -131,7 +131,7 @@ action :add do
       notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
 
-    if is_celery_worker_required
+    if enables_celery_worker
       service 'airflow-celery-worker' do
         service_name 'airflow-celery-worker'
         ignore_failure true
