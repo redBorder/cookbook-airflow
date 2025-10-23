@@ -1,5 +1,5 @@
 # Cookbook:: airflow
-# Provider:: config
+# Provider:: common
 
 include Airflow::Helper
 
@@ -22,8 +22,14 @@ action :add do
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
     db_port = airflow_secrets['port'] unless airflow_secrets.empty?
     api_user = new_resource.api_user
-    user_pass  = ensure_value("#{airflow_dir}/.airflow_password", length: 32)
-    jwt_secret = ensure_value("#{data_dir}/jwt_secret", length: 64)
+    redis_hosts = new_resource.redis_hosts
+    redis_port = new_resource.redis_port
+    redis_secrets = new_resource.redis_secrets
+    redis_password = redis_secrets['pass'] unless redis_secrets.empty?
+    cpu_cores = new_resource.cpu_cores
+    ram_memory_kb = new_resource.ram_memory_kb
+    workers = airflow_workers(cpu_cores, ram_memory_kb)
+    enables_celery_worker = new_resource.enables_celery_worker
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
@@ -68,9 +74,22 @@ action :add do
         db_name: db_name,
         db_user: db_user,
         db_port: db_port,
-        jwt_secret: jwt_secret
+        redis_hosts: redis_hosts,
+        redis_port: redis_port,
+        redis_password: redis_password,
+        celery_worker_concurrency: workers[:celery_worker_concurrency],
+        webserver_workers: workers[:webserver_workers],
+        enables_celery_worker: enables_celery_worker
       )
-      notifies :restart, 'service[airflow-webserver]', :delayed
+    end
+
+    template "#{data_dir}/jwt_secret" do
+      source 'jwt_secret.erb'
+      owner user
+      group group
+      mode '0644'
+      cookbook 'airflow'
+      variables(airflow_password: airflow_password)
     end
 
     template "#{airflow_env_dir}/simple_auth_manager_passwords.json" do
@@ -81,9 +100,8 @@ action :add do
       cookbook 'airflow'
       variables(
         api_user: api_user,
-        user_pass: user_pass
+        airflow_password: airflow_password
       )
-      notifies :restart, 'service[airflow-webserver]', :delayed
     end
 
     link '/var/lib/airflow/airflow.cfg' do
@@ -111,11 +129,19 @@ action :add do
       notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
 
-    %w(airflow-webserver airflow-scheduler).each do |svc|
-      service svc do
-        service_name svc
+    if enables_celery_worker
+      service 'airflow-celery-worker' do
+        service_name 'airflow-celery-worker'
+        ignore_failure true
         supports status: true, restart: true, enable: true
-        action [:enable, :start]
+        action [:start, :enable]
+      end
+    else
+      service 'airflow-celery-worker' do
+        service_name 'airflow-celery-worker'
+        ignore_failure true
+        supports status: true, enable: true
+        action [:stop, :disable]
       end
     end
 
@@ -132,14 +158,6 @@ action :remove do
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
     airflow_env_dir = new_resource.airflow_env_dir
-
-    %w(airflow-webserver airflow-scheduler).each do |svc|
-      service svc do
-        service_name svc
-        action [:stop, :disable]
-        ignore_failure true
-      end
-    end
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :remove
@@ -176,64 +194,5 @@ action :remove do
     Chef::Log.info('Airflow service has been removed')
   rescue => e
     Chef::Log.error(e.message)
-  end
-end
-
-action :register do
-  begin
-    services = [
-      {
-        'ID' => "airflow-web-#{node['hostname']}",
-        'Name' => 'airflow-web',
-        'Address' => node['ipaddress'],
-        'Port' => node['airflow']['web_port'] || 9191,
-      },
-      {
-        'ID' => "airflow-scheduler-#{node['hostname']}",
-        'Name' => 'airflow-scheduler',
-        'Address' => node['ipaddress_sync'],
-        'Port' => node['airflow']['scheduler_port'] || 8793,
-      },
-    ]
-
-    services.each do |service|
-      service_key = service['Name'].gsub('-', '_')
-
-      next if node['airflow'][service_key]['registered']
-
-      json_query = Chef::JSONCompat.to_json(service)
-
-      execute "Register #{service['Name']} service in consul" do
-        command "curl -X PUT http://localhost:8500/v1/agent/service/register -d #{json_query.dump} &>/dev/null"
-        action :nothing
-      end.run_action(:run)
-
-      node.override['airflow'][service_key]['registered'] = true
-      Chef::Log.info("#{service['Name']} service has been registered in consul")
-    end
-  rescue => e
-    Chef::Log.error("Error registering services: #{e.message}")
-  end
-end
-
-action :deregister do
-  begin
-    services = %w(airflow-web airflow-scheduler)
-
-    services.each do |service_name|
-      service_key = service_name.gsub('-', '_')
-
-      next unless node['airflow'][service_key]['registered']
-
-      execute "Deregister #{service_name} service from consul" do
-        command "curl -X PUT http://localhost:8500/v1/agent/service/deregister/#{service_name}-#{node['hostname']} &>/dev/null"
-        action :nothing
-      end.run_action(:run)
-
-      node.override['airflow'][service_key]['registered'] = false
-      Chef::Log.info("#{service_name} service has been deregistered from consul")
-    end
-  rescue => e
-    Chef::Log.error("Error deregistering services: #{e.message}")
   end
 end
