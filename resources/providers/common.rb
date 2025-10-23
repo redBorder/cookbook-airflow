@@ -22,8 +22,6 @@ action :add do
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
     db_port = airflow_secrets['port'] unless airflow_secrets.empty?
     api_user = new_resource.api_user
-    airflow_scheduler_hosts = new_resource.airflow_scheduler_hosts
-    airflow_webserver_hosts = new_resource.airflow_webserver_hosts
     redis_hosts = new_resource.redis_hosts
     redis_port = new_resource.redis_port
     redis_secrets = new_resource.redis_secrets
