@@ -188,8 +188,8 @@ action :add do
     # Lista de tus archivos DAG.
     # Debes listar manualmente cada archivo que tengas en files/default/
     dag_files = [
-      'dag_a.py',
-      'dag_b.py',
+      'airflow_dag1.py',
+      'airflow_dag2.py',
     ]
 
     # 1. Asegurar que la carpeta DAGs exista
