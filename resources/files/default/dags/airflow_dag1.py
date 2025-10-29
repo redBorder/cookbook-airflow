@@ -82,11 +82,11 @@ def move_minio_files(**context):
 
 # --- DAG Definition ---
 with DAG(
-    dag_id="move_minio_files",
+    dag_id="malware_move_minio_files",
     start_date=pendulum.datetime(2025, 9, 3, tz="UTC"),
     schedule="*/1 * * * *",  # every minute
     catchup=False,
-    tags=["s3", "minio", "move"],
+    tags=["malware", "s3", "move"],
 ) as dag:
 
     move_files_task = PythonOperator(
@@ -96,7 +96,7 @@ with DAG(
 
     trigger_dag2_task = TriggerDagRunOperator(
         task_id="trigger_logstash_analysis",
-        trigger_dag_id="analyze_files_logstash",
+        trigger_dag_id="malware_analyze_files_logstash",
         # Pass the date_path (or None if no files moved) to the triggered DAG
         conf={"date_path": "{{ ti.xcom_pull(task_ids='move_files', key='date_path') }}"},
         wait_for_completion=False,

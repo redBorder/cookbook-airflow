@@ -33,7 +33,7 @@ def get_minio_client():
 # --- Download and Prepare Files for Logstash ---
 def download_files_from_minio(**context):
     """
-    Downloads files from the S3 path passed by the triggering DAG, 
+    Download files from the S3 path passed by the triggering DAG, 
     renames them with a UUID, and creates a corresponding .lock file for Logstash.
     """
     conf = context.get("dag_run").conf or {}
@@ -88,11 +88,11 @@ def download_files_from_minio(**context):
 
 # --- DAG Definition ---
 with DAG(
-    dag_id="analyze_files_logstash",
+    dag_id="malware_analyze_files_logstash",
     start_date=pendulum.datetime(2025, 9, 3, tz="UTC"),
     schedule=None,  # triggered by dag1
     catchup=False,
-    tags=["logstash", "s3", "minio", "analysis"],
+    tags=["malware", "logstash", "s3", "analysis"],
 ) as dag:
 
     download_files_task = PythonOperator(
