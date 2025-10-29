@@ -161,7 +161,7 @@ action :add do
     minio_access_key = s3_malware_user
     minio_secret_key = s3_malware_password
 
-    execute "add_minio_s3_connection" do
+    execute 'add_minio_s3_connection' do
       command <<-EOC
         #{airflow_venv_bin}/airflow connections add #{minio_conn_id} \
           --conn-type 'aws' \
