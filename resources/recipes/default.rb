@@ -7,6 +7,14 @@ airflow_scheduler 'Configure Airflow Scheduler' do
   action :add
 end
 
+airflow_dag_processor 'Configure Airflow Dag Proccessor' do
+  action :add
+end
+
+airflow_triggerer 'Configure Airflow Triggerer' do
+  action :add
+end
+
 airflow_webserver 'Configure Airflow Webserver' do
   action :add
 end
