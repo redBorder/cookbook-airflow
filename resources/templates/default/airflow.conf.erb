@@ -24,6 +24,7 @@ sql_alchemy_conn = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %
 [webserver]
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
 default_ui_timezone = UTC
+workers = <%= @enables_celery_worker ? @webserver_workers : 1 %>
 
 # =========================================
 # Scheduler configuration
