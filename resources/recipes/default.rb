@@ -7,7 +7,7 @@ airflow_scheduler 'Configure Airflow Scheduler' do
   action :add
 end
 
-airflow_dag_processor 'Configure Airflow Dag Proccessor' do
+airflow_dag_processor 'Configure Airflow Dag Processor' do
   action :add
 end
 

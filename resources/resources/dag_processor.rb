@@ -1,5 +1,5 @@
 # Cookbook:: airflow
-# Resource:: dag_proccessor
+# Resource:: dag_processor
 
 actions :add, :remove, :register, :deregister
 default_action :add

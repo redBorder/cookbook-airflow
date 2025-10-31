@@ -1,4 +1,4 @@
 module Airflow
-  module DagProccessor
+  module DagProcessor
   end
 end

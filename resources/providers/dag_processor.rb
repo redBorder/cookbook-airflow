@@ -1,7 +1,7 @@
 # Cookbook:: airflow
-# Provider:: dag_proccessor
+# Provider:: dag_processor
 
-include Airflow::DagProccessor
+include Airflow::DagProcessor
 
 action :add do
   begin
@@ -12,7 +12,7 @@ action :add do
       action [:enable, :start]
     end
 
-    Chef::Log.info('Airflow Dag Proccessor has been processed')
+    Chef::Log.info('Airflow Dag Processor has been processed')
   rescue => e
     Chef::Log.error(e.message)
   end
@@ -27,7 +27,7 @@ action :remove do
       action [:stop, :disable]
     end
 
-    Chef::Log.info('Airflow Dag Proccessor service has been removed')
+    Chef::Log.info('Airflow Dag Processor service has been removed')
   rescue => e
     Chef::Log.error(e.message)
   end
@@ -52,7 +52,7 @@ action :register do
       end.run_action(:run)
 
       node.normal['airflow']['dag-processor']['registered'] = true
-      Chef::Log.info('Airflow Dag Proccessor service has been registered to consul')
+      Chef::Log.info('Airflow Dag Processor service has been registered to consul')
     end
   rescue => e
     Chef::Log.error(e.message)
@@ -68,7 +68,7 @@ action :deregister do
       end.run_action(:run)
 
       node.normal['airflow']['dag-processor']['registered'] = false
-      Chef::Log.info('Airflow Dag Proccessor service has been deregistered from consul')
+      Chef::Log.info('Airflow Dag Processor service has been deregistered from consul')
     end
   rescue => e
     Chef::Log.error(e.message)
