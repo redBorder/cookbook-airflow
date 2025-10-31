@@ -1,6 +1,8 @@
 # Flags
 default['airflow']['webserver']['registered'] = false
 default['airflow']['scheduler']['registered'] = false
+default['airflow']['dag-processor']['registered'] = false
+default['airflow']['triggerer']['registered'] = false
 default['airflow']['web_port'] = 9191
 default['airflow']['scheduler_port'] = 8793
 default['airflow']['triggerer_port'] = 8794

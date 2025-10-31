@@ -35,14 +35,14 @@ end
 
 action :register do
   begin
-    ipaddress_mgt = new_resource.ipaddress_mgt
+    ipaddress_sync = new_resource.ipaddress_sync
     triggerer_port = new_resource.triggerer_port
 
     unless node['airflow']['triggerer']['registered']
       query = {}
       query['ID'] = "airflow-triggerer-#{node['hostname']}"
       query['Name'] = 'airflow-triggerer'
-      query['Address'] = ipaddress_mgt
+      query['Address'] = ipaddress_sync
       query['Port'] = triggerer_port
       json_query = Chef::JSONCompat.to_json(query)
 
