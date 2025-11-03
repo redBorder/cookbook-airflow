@@ -24,7 +24,6 @@ sql_alchemy_conn = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %
 [webserver]
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
 default_ui_timezone = UTC
-workers = <%= @enables_celery_worker ? @webserver_workers : 1 %>
 
 # =========================================
 # Scheduler configuration
@@ -35,6 +34,7 @@ scheduler_heartbeat_sec = 5
 min_file_process_interval = 30
 catchup_by_default = False
 max_active_runs_per_dag = 1
+use_execution_api = True
 
 # =========================================
 # API configuration
@@ -42,6 +42,9 @@ max_active_runs_per_dag = 1
 [api]
 host = 0.0.0.0
 port = <%= @airflow_port %>
+base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
+auth_backend = airflow.api.auth.backend.default
+workers = <%= @enables_celery_worker ? @webserver_workers : 1 %>
 
 # =========================================
 # DAG processor
