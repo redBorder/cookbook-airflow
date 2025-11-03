@@ -1,6 +1,11 @@
 cookbook-airflow CHANGELOG
 ===============
 
+## 0.3.0
+
+  - Rafa Gómez
+    - [0545f94] Feature/#23213 Make dag processor and airflow triggerer cluster compatible (#8)
+
 ## 0.2.0
 
   - Rafa Gómez
