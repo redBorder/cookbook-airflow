@@ -44,9 +44,9 @@ action :add do
       not_if "getent passwd #{user}"
     end
 
-    execute 'add_airflow_to_logstash_group' do
-      command "usermod -aG logstash #{user}"
-      not_if "id -nG #{user} | grep -qw logstash"
+    execute 'add_airflow_to_malware_group' do
+      command "usermod -aG malware #{user}"
+      not_if "id -nG #{user} | grep -qw malware"
     end
 
     directory airflow_dir do
