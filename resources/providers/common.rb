@@ -46,6 +46,7 @@ action :add do
 
     execute 'add_airflow_to_malware_group' do
       command "usermod -aG malware #{user}"
+      only_if 'getent group malware'
       not_if "id -nG #{user} | grep -qw malware"
     end
 
