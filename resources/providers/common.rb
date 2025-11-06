@@ -116,15 +116,15 @@ action :add do
     end
 
     template "#{airflow_dir}/logstash_hosts.yml" do
-    source 'logstash_hosts.yml.erb'
-    owner user
-    group group
-    mode '0644'
-    cookbook 'airflow'
-    variables(
-      logstash_hosts: logstash_hosts,
-    )
-  end
+      source 'logstash_hosts.yml.erb'
+      owner user
+      group group
+      mode '0644'
+      cookbook 'airflow'
+      variables(
+        logstash_hosts: logstash_hosts
+      )
+    end
 
     link '/var/lib/airflow/airflow.cfg' do
       to '/etc/airflow/airflow.cfg'
