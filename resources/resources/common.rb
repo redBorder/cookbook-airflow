@@ -14,6 +14,7 @@ attribute :api_user, kind_of: String, default: 'admin'
 attribute :redis_hosts, kind_of: Array, default: []
 attribute :redis_port, kind_of: Integer, default: 26379
 attribute :redis_secrets, kind_of: Hash, default: {}
+attribute :logstash_hosts, kind_of: Array, default: []
 attribute :cpu_cores, kind_of: Integer, default: 4
 attribute :ram_memory_kb, kind_of: Integer, default: 16777216
 attribute :enables_celery_worker, kind_of: [TrueClass, FalseClass], default: false

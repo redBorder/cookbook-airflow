@@ -26,6 +26,7 @@ action :add do
     redis_port = new_resource.redis_port
     redis_secrets = new_resource.redis_secrets
     redis_password = redis_secrets['pass'] unless redis_secrets.empty?
+    logstash_hosts = new_resource.logstash_hosts
     cpu_cores = new_resource.cpu_cores
     ram_memory_kb = new_resource.ram_memory_kb
     workers = airflow_workers(cpu_cores, ram_memory_kb)
@@ -113,6 +114,17 @@ action :add do
         airflow_password: airflow_password
       )
     end
+
+    template "#{airflow_dir}/logstash_hosts.yml" do
+    source 'logstash_hosts.yml.erb'
+    owner user
+    group group
+    mode '0644'
+    cookbook 'airflow'
+    variables(
+      logstash_hosts: logstash_hosts,
+    )
+  end
 
     link '/var/lib/airflow/airflow.cfg' do
       to '/etc/airflow/airflow.cfg'
