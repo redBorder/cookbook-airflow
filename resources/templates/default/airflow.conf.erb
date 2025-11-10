@@ -3,7 +3,7 @@
 # =========================================
 [core]
 executor = <%= @enables_celery_worker ? 'CeleryExecutor' : 'LocalExecutor' %>
-dags_folder = <%= @airflow_dir %>/dags
+dags_folder = <%= @airflow_dags_folder %>
 base_log_folder = <%= @data_dir %>/logs
 pid_file = <%= @pid_file %>
 load_examples = False
@@ -22,9 +22,13 @@ sql_alchemy_conn = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %
 # Webserver configuration
 # =========================================
 [webserver]
+<% if @airflow_webserver_hosts.empty? || @airflow_webserver_hosts.length > 1 %>
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
+<% else %>
+base_url = http://<%= @airflow_webserver_hosts.first %>:<%= @airflow_port %>
+<% end %>
 default_ui_timezone = UTC
-workers = <%= @enables_celery_worker ? @webserver_workers : 1 %>
+secret_key = <%= @secret_key %>
 
 # =========================================
 # Scheduler configuration
@@ -43,7 +47,11 @@ use_execution_api = True
 [api]
 host = 0.0.0.0
 port = <%= @airflow_port %>
+<% if @airflow_webserver_hosts.empty? || @airflow_webserver_hosts.length > 1 %>
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
+<% else %>
+base_url = http://<%= @airflow_webserver_hosts.first %>:<%= @airflow_port %>
+<% end %>
 auth_backend = airflow.api.auth.backend.default
 workers = <%= @enables_celery_worker ? @webserver_workers : 1 %>
 
