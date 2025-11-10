@@ -22,7 +22,11 @@ sql_alchemy_conn = postgresql+psycopg2://<%= @db_user %>:<%= @airflow_password %
 # Webserver configuration
 # =========================================
 [webserver]
+<% if @airflow_webserver_hosts.empty? %>
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
+<% else %>
+base_url = http://<%= @airflow_webserver_hosts.first %>:<%= @airflow_port %>
+<% end %>
 default_ui_timezone = UTC
 secret_key = <%= @secret_key %>
 
@@ -43,7 +47,11 @@ use_execution_api = True
 [api]
 host = 0.0.0.0
 port = <%= @airflow_port %>
+<% if @airflow_webserver_hosts.empty? %>
 base_url = http://<%= @ipmgt %>:<%= @airflow_port %>
+<% else %>
+base_url = http://<%= @airflow_webserver_hosts.first %>:<%= @airflow_port %>
+<% end %>
 auth_backend = airflow.api.auth.backend.default
 workers = <%= @enables_celery_worker ? @webserver_workers : 1 %>
 

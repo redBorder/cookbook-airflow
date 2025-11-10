@@ -29,6 +29,7 @@ action :add do
     redis_secrets = new_resource.redis_secrets
     redis_password = redis_secrets['pass'] unless redis_secrets.empty?
     logstash_hosts = new_resource.logstash_hosts
+    airflow_webserver_hosts = new_resource.airflow_webserver_hosts
     cpu_cores = new_resource.cpu_cores
     ram_memory_kb = new_resource.ram_memory_kb
     workers = airflow_workers(cpu_cores, ram_memory_kb)
@@ -87,6 +88,7 @@ action :add do
         db_name: db_name,
         db_user: db_user,
         db_port: db_port,
+        airflow_webserver_hosts: airflow_webserver_hosts,
         redis_hosts: redis_hosts,
         redis_port: redis_port,
         redis_password: redis_password,
