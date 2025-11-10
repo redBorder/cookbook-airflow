@@ -11,6 +11,8 @@ action :add do
     cdomain = new_resource.cdomain
     ipaddress_mgt = new_resource.ipaddress_mgt
     airflow_dir = new_resource.airflow_dir
+    airflow_dags_folder = new_resource.airflow_dags_folder
+    airflow_venv_bin = new_resource.airflow_venv_bin
     data_dir = new_resource.data_dir
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
@@ -71,6 +73,7 @@ action :add do
       cookbook 'airflow'
       variables(
         airflow_dir: airflow_dir,
+        airflow_dags_folder: airflow_dags_folder,
         data_dir: data_dir,
         log_file: log_file,
         pid_file: pid_file,
@@ -126,7 +129,7 @@ action :add do
       )
     end
 
-    link '/var/lib/airflow/airflow.cfg' do
+    link "#{data_dir}/airflow.cfg" do
       to '/etc/airflow/airflow.cfg'
       owner user
       group group
@@ -141,34 +144,17 @@ action :add do
     end
 
     execute 'initialize_airflow_db' do
-      command '/opt/airflow/venv/bin/airflow db migrate'
+      command "#{airflow_venv_bin} db migrate"
       user user
       group group
       environment(
-        'AIRFLOW_HOME' => '/var/lib/airflow'
+        'AIRFLOW_HOME' => data_dir
       )
       not_if { ::File.exist?("#{data_dir}/airflow.db_initialized") }
       notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
 
-    if enables_celery_worker
-      service 'airflow-celery-worker' do
-        service_name 'airflow-celery-worker'
-        ignore_failure true
-        supports status: true, restart: true, enable: true
-        action [:start, :enable]
-      end
-    else
-      service 'airflow-celery-worker' do
-        service_name 'airflow-celery-worker'
-        ignore_failure true
-        supports status: true, enable: true
-        action [:stop, :disable]
-      end
-    end
-
     # Connection with MinIO
-    airflow_venv_bin = '/opt/airflow/venv/bin'
     minio_conn_id = 'minio_conn'
     minio_endpoint = "http://s3.service.#{cdomain}:9001"
     minio_access_key = s3_malware_user
@@ -176,7 +162,7 @@ action :add do
 
     execute 'add_minio_s3_connection' do
       command <<-EOC
-        #{airflow_venv_bin}/airflow connections add #{minio_conn_id} \
+        #{airflow_venv_bin} connections add #{minio_conn_id} \
           --conn-type 'aws' \
           --conn-login '#{minio_access_key}' \
           --conn-password '#{minio_secret_key}' \
@@ -185,18 +171,15 @@ action :add do
       user user
       group group
       environment(
-        'AIRFLOW_HOME' => '/var/lib/airflow'
+        'AIRFLOW_HOME' => data_dir
       )
 
       # Only execute if the connection does NOT yet exist.
       # The ‘connections get’ command will return an error if the connection does not exist.
-      not_if "#{airflow_venv_bin}/airflow connections list --output json | grep -w '\"conn_id\": \"#{minio_conn_id}\"'",
+      not_if "#{airflow_venv_bin} connections list --output json | grep -w '\"conn_id\": \"#{minio_conn_id}\"'",
        user: user,
-       environment: { 'AIRFLOW_HOME' => '/var/lib/airflow' }
+       environment: { 'AIRFLOW_HOME' => data_dir }
     end
-
-    # Airflow DAGs
-    airflow_dags_folder = '/etc/airflow/dags'
 
     directory airflow_dags_folder do
       owner user
@@ -214,6 +197,22 @@ action :add do
       files_mode '0644'
       cookbook 'airflow'
       action :create
+    end
+
+    if enables_celery_worker
+      service 'airflow-celery-worker' do
+        service_name 'airflow-celery-worker'
+        ignore_failure true
+        supports status: true, restart: true, enable: true
+        action [:start, :enable]
+      end
+    else
+      service 'airflow-celery-worker' do
+        service_name 'airflow-celery-worker'
+        ignore_failure true
+        supports status: true, enable: true
+        action [:stop, :disable]
+      end
     end
 
     Chef::Log.info('Airflow cookbook has been processed')

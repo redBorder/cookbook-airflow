@@ -3,7 +3,7 @@
 # =========================================
 [core]
 executor = <%= @enables_celery_worker ? 'CeleryExecutor' : 'LocalExecutor' %>
-dags_folder = <%= @airflow_dir %>/dags
+dags_folder = <%= @airflow_dags_folder %>
 base_log_folder = <%= @data_dir %>/logs
 pid_file = <%= @pid_file %>
 load_examples = False
