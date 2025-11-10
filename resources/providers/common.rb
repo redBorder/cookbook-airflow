@@ -11,6 +11,8 @@ action :add do
     cdomain = new_resource.cdomain
     ipaddress_mgt = new_resource.ipaddress_mgt
     airflow_dir = new_resource.airflow_dir
+    airflow_dags_folder = new_resource.airflow_dags_folder
+    airflow_venv_bin = new_resource.airflow_venv_bin
     data_dir = new_resource.data_dir
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
@@ -26,10 +28,15 @@ action :add do
     redis_port = new_resource.redis_port
     redis_secrets = new_resource.redis_secrets
     redis_password = redis_secrets['pass'] unless redis_secrets.empty?
+    logstash_hosts = new_resource.logstash_hosts
+    airflow_webserver_hosts = new_resource.airflow_webserver_hosts
     cpu_cores = new_resource.cpu_cores
     ram_memory_kb = new_resource.ram_memory_kb
     workers = airflow_workers(cpu_cores, ram_memory_kb)
     enables_celery_worker = new_resource.enables_celery_worker
+    s3_malware_user = new_resource.malware_access_key
+    s3_malware_password = new_resource.malware_secret_key
+    secret_key = airflow_secrets['pass'] unless airflow_secrets.empty?
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
@@ -39,6 +46,12 @@ action :add do
       command "/usr/sbin/useradd -r #{user} -s /sbin/nologin"
       ignore_failure true
       not_if "getent passwd #{user}"
+    end
+
+    execute 'add_airflow_to_malware_group' do
+      command "usermod -aG malware #{user}"
+      only_if 'getent group malware'
+      not_if "id -nG #{user} | grep -qw malware"
     end
 
     directory airflow_dir do
@@ -61,6 +74,7 @@ action :add do
       cookbook 'airflow'
       variables(
         airflow_dir: airflow_dir,
+        airflow_dags_folder: airflow_dags_folder,
         data_dir: data_dir,
         log_file: log_file,
         pid_file: pid_file,
@@ -74,9 +88,11 @@ action :add do
         db_name: db_name,
         db_user: db_user,
         db_port: db_port,
+        airflow_webserver_hosts: airflow_webserver_hosts,
         redis_hosts: redis_hosts,
         redis_port: redis_port,
         redis_password: redis_password,
+        secret_key: secret_key,
         celery_worker_concurrency: workers[:celery_worker_concurrency],
         webserver_workers: workers[:webserver_workers],
         enables_celery_worker: enables_celery_worker
@@ -104,7 +120,18 @@ action :add do
       )
     end
 
-    link '/var/lib/airflow/airflow.cfg' do
+    template "#{airflow_dir}/logstash_hosts.yml" do
+      source 'logstash_hosts.yml.erb'
+      owner user
+      group group
+      mode '0644'
+      cookbook 'airflow'
+      variables(
+        logstash_hosts: logstash_hosts
+      )
+    end
+
+    link "#{data_dir}/airflow.cfg" do
       to '/etc/airflow/airflow.cfg'
       owner user
       group group
@@ -119,14 +146,59 @@ action :add do
     end
 
     execute 'initialize_airflow_db' do
-      command '/opt/airflow/venv/bin/airflow db migrate'
+      command "#{airflow_venv_bin} db migrate"
       user user
       group group
       environment(
-        'AIRFLOW_HOME' => '/var/lib/airflow'
+        'AIRFLOW_HOME' => data_dir
       )
       not_if { ::File.exist?("#{data_dir}/airflow.db_initialized") }
       notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
+    end
+
+    # Connection with MinIO
+    minio_conn_id = 'minio_conn'
+    minio_endpoint = "http://s3.service.#{cdomain}:9001"
+    minio_access_key = s3_malware_user
+    minio_secret_key = s3_malware_password
+
+    execute 'add_minio_s3_connection' do
+      command <<-EOC
+        #{airflow_venv_bin} connections add #{minio_conn_id} \
+          --conn-type 'aws' \
+          --conn-login '#{minio_access_key}' \
+          --conn-password '#{minio_secret_key}' \
+          --conn-extra '{"host": "#{minio_endpoint}", "aws_access_key_id": "#{minio_access_key}", "aws_secret_access_key": "#{minio_secret_key}", "endpoint_url": "#{minio_endpoint}", "region_name": "us-east-1"}'
+      EOC
+      user user
+      group group
+      environment(
+        'AIRFLOW_HOME' => data_dir
+      )
+
+      # Only execute if the connection does NOT yet exist.
+      # The ‘connections get’ command will return an error if the connection does not exist.
+      not_if "#{airflow_venv_bin} connections list --output json | grep -w '\"conn_id\": \"#{minio_conn_id}\"'",
+       user: user,
+       environment: { 'AIRFLOW_HOME' => data_dir }
+    end
+
+    directory airflow_dags_folder do
+      owner user
+      group group
+      mode '0755'
+      recursive true
+      action :create
+    end
+
+    remote_directory airflow_dags_folder do
+      source 'dags'
+      owner user
+      group group
+      mode '0755'
+      files_mode '0644'
+      cookbook 'airflow'
+      action :create
     end
 
     if enables_celery_worker
