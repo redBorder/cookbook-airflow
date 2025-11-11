@@ -37,6 +37,7 @@ action :add do
     s3_malware_user = new_resource.malware_access_key
     s3_malware_password = new_resource.malware_secret_key
     secret_key = airflow_secrets['pass'] unless airflow_secrets.empty?
+    logging_level = 'INFO'
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
       action :upgrade
@@ -95,7 +96,8 @@ action :add do
         secret_key: secret_key,
         celery_worker_concurrency: workers[:celery_worker_concurrency],
         webserver_workers: workers[:webserver_workers],
-        enables_celery_worker: enables_celery_worker
+        enables_celery_worker: enables_celery_worker,
+        logging_level: logging_level
       )
     end
 
