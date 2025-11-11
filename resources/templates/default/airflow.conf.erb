@@ -70,7 +70,7 @@ remote_logging = False
 task_log_reader = task
 log_filename_template = {{ ti.dag_id }}/run_id={{ ti.run_id }}/task_id={{ ti.task_id }}/
 {% if ti.map_index >= 0 %}map_index={{ ti.map_index }}/{% endif %}attempt={{ try_number|default(ti.try_number) }}.log
-logging_level = DEBUG
+logging_level = <%= @logging_level %>
 enable_json_logging = False
 colored_console_log = True
 colored_log_format = True
