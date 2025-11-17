@@ -1,6 +1,11 @@
 cookbook-airflow CHANGELOG
 ===============
 
+## 1.1.0
+
+  - vimesa
+    - [67033af] Add logging_level
+
 ## 1.0.0
 
   - Rafael Gomez
