@@ -233,7 +233,7 @@ action :remove do
     pid_file = new_resource.pid_file
     airflow_env_dir = new_resource.airflow_env_dir
 
-    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
+    dnf_package ['airflow'] do
       action :remove
     end
 
