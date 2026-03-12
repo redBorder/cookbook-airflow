@@ -1,6 +1,11 @@
 cookbook-airflow CHANGELOG
 ===============
 
+## 1.2.0
+
+  - Vimesa
+    - [dcdc2b5] Remove action ‘remove’ from redborder-malware-pythonpyenv (#13)
+
 ## 1.1.0
 
   - vimesa
