@@ -181,8 +181,8 @@ action :add do
       # Only execute if the connection does NOT yet exist.
       # The ‘connections get’ command will return an error if the connection does not exist.
       not_if "#{airflow_venv_bin} connections list --output json | grep -w '\"conn_id\": \"#{minio_conn_id}\"'",
-       user: user,
-       environment: { 'AIRFLOW_HOME' => data_dir }
+        user: user,
+        environment: { 'AIRFLOW_HOME' => data_dir }
     end
 
     directory airflow_dags_folder do
@@ -231,9 +231,8 @@ action :remove do
     data_dir = new_resource.data_dir
     log_file = new_resource.log_file
     pid_file = new_resource.pid_file
-    airflow_env_dir = new_resource.airflow_env_dir
 
-    dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
+    dnf_package ['airflow'] do
       action :remove
     end
 
@@ -244,12 +243,6 @@ action :remove do
     end
 
     directory airflow_dir do
-      recursive true
-      action :delete
-      ignore_failure true
-    end
-
-    directory airflow_env_dir do
       recursive true
       action :delete
       ignore_failure true
