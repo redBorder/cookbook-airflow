@@ -43,6 +43,13 @@ action :add do
       action :upgrade
     end
 
+    file '/etc/profile.d/airflow.sh' do
+      content "export AIRFLOW_HOME=#{data_dir}\n"
+      owner 'root'
+      group 'root'
+      mode '0644'
+    end
+
     execute 'create_user' do
       command "/usr/sbin/useradd -r #{user} -s /sbin/nologin"
       ignore_failure true
@@ -234,6 +241,11 @@ action :remove do
 
     dnf_package ['airflow'] do
       action :remove
+    end
+
+    file '/etc/profile.d/airflow.sh' do
+      action :delete
+      ignore_failure true
     end
 
     directory data_dir do
