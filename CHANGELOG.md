@@ -1,6 +1,11 @@
 cookbook-airflow CHANGELOG
 ===============
 
+## 1.2.1
+
+  - nilsver
+    - [ebf5fd0] Bugfix/#23891 default path changed by airflow (#15)
+
 ## 1.2.0
 
   - Vimesa
