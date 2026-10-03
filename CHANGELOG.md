@@ -1,6 +1,20 @@
 cookbook-airflow CHANGELOG
 ===============
 
+## 1.2.2
+
+  - manegron
+    - [d48d421] Upload cookbook only if opscode-erchef is active
+  - Pablo Pérez
+    - [7a9e074] Merge branch 'master' into development
+    - [b69f6c4] Release 1.2.1
+  - nilsver
+    - [ebf5fd0] Bugfix/#23891 default path changed by airflow (#15)
+  - vimesa
+    - [5219ea7] Release 1.2.0
+  - Vimesa
+    - [dcdc2b5] Remove action ‘remove’ from redborder-malware-pythonpyenv (#13)
+
 ## 1.2.1
 
   - nilsver
