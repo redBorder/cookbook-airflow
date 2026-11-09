@@ -4,3 +4,5 @@ maintainer_email 'git@redborder.com'
 license          'AGPL-3.0'
 description      'Installs/Configures cookbook-airflow'
 version          '1.2.2'
+
+depends 'openbao'

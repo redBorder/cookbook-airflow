@@ -97,8 +97,14 @@ backend = <%= @airflow_secrets['backend'] %>
 # Celery configuration
 # =========================================
 [celery]
+<% if @openbao %>
+# Full URLs incl. the Redis password, rendered by the OpenBao agent into memory only
+broker_url_cmd = cat /run/rb-secrets/airflow/broker_url
+result_backend_cmd = cat /run/rb-secrets/airflow/result_backend
+<% else %>
 broker_url = redis://default:<%= @redis_password %>@<%= @redis_hosts.first %>:<%= @redis_port %>/1
 result_backend = redis://default:<%= @redis_password %>@<%= @redis_hosts.first %>:<%= @redis_port %>/2
+<% end %>
 worker_concurrency = <%= @celery_worker_concurrency %>
 task_acks_late = True
 worker_prefetch_multiplier = 1

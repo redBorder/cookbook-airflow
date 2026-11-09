@@ -14,6 +14,8 @@ attribute :api_user, kind_of: String, default: 'admin'
 attribute :redis_hosts, kind_of: Array, default: []
 attribute :redis_port, kind_of: Integer, default: 26379
 attribute :redis_secrets, kind_of: Hash, default: {}
+# true: the Redis password comes from OpenBao (agent files in /run), redis_secrets is ignored
+attribute :openbao, kind_of: [TrueClass, FalseClass], default: false
 attribute :logstash_hosts, kind_of: Array, default: []
 attribute :airflow_webserver_hosts, kind_of: Array, default: []
 attribute :cpu_cores, kind_of: Integer, default: 4

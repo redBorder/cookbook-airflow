@@ -27,7 +27,8 @@ action :add do
     redis_hosts = new_resource.redis_hosts
     redis_port = new_resource.redis_port
     redis_secrets = new_resource.redis_secrets
-    redis_password = redis_secrets['pass'] unless redis_secrets.empty?
+    openbao = new_resource.openbao
+    redis_password = redis_secrets['pass'] unless redis_secrets.empty? || openbao
     logstash_hosts = new_resource.logstash_hosts
     airflow_webserver_hosts = new_resource.airflow_webserver_hosts
     cpu_cores = new_resource.cpu_cores
@@ -74,6 +75,21 @@ action :add do
       mode '0755'
     end
 
+    # No trailing newline in the templates: Airflow uses the command output as the URL
+    { 'broker_url' => 'airflow-broker-url', 'result_backend' => 'airflow-result-backend' }.each do |file, name|
+      openbao_secret_file name do
+        source "#{name}.ctmpl.erb"
+        cookbook 'airflow'
+        variables(redis_hosts: redis_hosts, redis_port: redis_port)
+        destination "/run/rb-secrets/airflow/#{file}"
+        owner 'root'
+        group group
+        mode '0640'
+        unit %w(airflow-celery-worker airflow-scheduler airflow-webserver airflow-dag-processor airflow-triggerer)
+        action openbao && enables_celery_worker ? :add : :remove
+      end
+    end
+
     template "#{airflow_dir}/airflow.cfg" do
       source 'airflow.conf.erb'
       owner user
@@ -100,6 +116,7 @@ action :add do
         redis_hosts: redis_hosts,
         redis_port: redis_port,
         redis_password: redis_password,
+        openbao: openbao,
         secret_key: secret_key,
         celery_worker_concurrency: workers[:celery_worker_concurrency],
         webserver_workers: workers[:webserver_workers],
