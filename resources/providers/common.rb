@@ -270,8 +270,16 @@ action :add do
     minio_endpoint = "http://s3.service.#{cdomain}:9001"
     minio_access_key = s3_malware_user
     minio_secret_key = s3_malware_password
+    if OpenBao.placeholder?(minio_secret_key)
+      # Stored in Airflow's DB by the CLI: needs the real key (root-only file in /run), not a placeholder
+      real = OpenBao.run_secret('s3_malware') || {}
+      minio_access_key = real['s3_malware_access_key_id']
+      minio_secret_key = real['s3_malware_secret_key_id']
+    end
 
     execute 'add_minio_s3_connection' do
+      only_if { minio_secret_key } # nil while OpenBao is sealed
+      sensitive true
       command <<-EOC
         #{airflow_venv_bin} connections add #{minio_conn_id} \
           --conn-type 'aws' \
