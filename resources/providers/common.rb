@@ -278,7 +278,7 @@ action :add do
     end
 
     execute 'add_minio_s3_connection' do
-      only_if { minio_secret_key } # nil while OpenBao is sealed
+      only_if { !minio_secret_key.nil? } # boolean: Chef prints a non-boolean result in a warning
       sensitive true
       command <<-EOC
         #{airflow_venv_bin} connections add #{minio_conn_id} \
