@@ -98,7 +98,6 @@ backend = <%= @airflow_secrets['backend'] %>
 # =========================================
 [celery]
 <% if @openbao %>
-# Full URLs incl. the Redis password, rendered by the OpenBao agent into memory only
 broker_url_cmd = cat /run/rb-secrets/airflow/broker_url
 result_backend_cmd = cat /run/rb-secrets/airflow/result_backend
 <% else %>

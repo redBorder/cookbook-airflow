@@ -19,7 +19,6 @@ action :add do
     airflow_env_dir = new_resource.airflow_env_dir
     airflow_secrets = new_resource.airflow_secrets
     openbao = new_resource.openbao
-    # OpenBao: placeholder, the agent fills in the password in /run
     airflow_password = openbao ? OpenBao.ref('db_airflow', 'pass') : (airflow_secrets['pass'] unless airflow_secrets.empty?)
     database_host = airflow_secrets['hostname'] unless airflow_secrets.empty?
     db_name = airflow_secrets['database'] unless airflow_secrets.empty?
@@ -76,7 +75,7 @@ action :add do
       mode '0755'
     end
 
-    # No trailing newline in the templates: Airflow uses the command output as the URL
+    # no trailing newline: Airflow uses the command output as the URL
     { 'broker_url' => 'airflow-broker-url', 'result_backend' => 'airflow-result-backend' }.each do |file, name|
       openbao_secret_file name do
         source "#{name}.ctmpl.erb"
@@ -121,7 +120,7 @@ action :add do
           webserver_workers: workers[:webserver_workers],
           enables_celery_worker: enables_celery_worker,
           logging_level: logging_level,
-          lbrace: openbao ? '{{ "{{" }}' : '{{' # Airflow's own {{ }} must not be read by the OpenBao agent
+          lbrace: openbao ? '{{ "{{" }}' : '{{' # Airflow's own {{ }} must not be parsed by the agent
         )
         destination '/run/rb-secrets/airflow/airflow.cfg'
         owner 'root'
@@ -166,7 +165,7 @@ action :add do
           webserver_workers: workers[:webserver_workers],
           enables_celery_worker: enables_celery_worker,
           logging_level: logging_level,
-          lbrace: openbao ? '{{ "{{" }}' : '{{' # Airflow's own {{ }} must not be read by the OpenBao agent
+          lbrace: openbao ? '{{ "{{" }}' : '{{' # Airflow's own {{ }} must not be parsed by the agent
         )
       end
     end
@@ -271,14 +270,14 @@ action :add do
     minio_access_key = s3_malware_user
     minio_secret_key = s3_malware_password
     if OpenBao.placeholder?(minio_secret_key)
-      # Stored in Airflow's DB by the CLI: needs the real key (root-only file in /run), not a placeholder
+      # the CLI stores it in Airflow's DB: needs the real key, not a placeholder
       real = OpenBao.run_secret('s3_malware') || {}
       minio_access_key = real['s3_malware_access_key_id']
       minio_secret_key = real['s3_malware_secret_key_id']
     end
 
     execute 'add_minio_s3_connection' do
-      only_if { !minio_secret_key.nil? } # boolean: Chef prints a non-boolean result in a warning
+      only_if { !minio_secret_key.nil? } # boolean: Chef warns on a non-boolean result
       sensitive true
       command <<-EOC
         #{airflow_venv_bin} connections add #{minio_conn_id} \
