@@ -18,7 +18,7 @@ action :add do
     pid_file = new_resource.pid_file
     airflow_env_dir = new_resource.airflow_env_dir
     airflow_secrets = new_resource.airflow_secrets
-    airflow_password = airflow_secrets['pass'] unless airflow_secrets.empty?
+    airflow_password = OpenBao.ref('db_airflow', 'pass')
     database_host = airflow_secrets['hostname'] unless airflow_secrets.empty?
     db_name = airflow_secrets['database'] unless airflow_secrets.empty?
     db_user = airflow_secrets['user'] unless airflow_secrets.empty?
@@ -26,8 +26,6 @@ action :add do
     api_user = new_resource.api_user
     redis_hosts = new_resource.redis_hosts
     redis_port = new_resource.redis_port
-    redis_secrets = new_resource.redis_secrets
-    redis_password = redis_secrets['pass'] unless redis_secrets.empty?
     logstash_hosts = new_resource.logstash_hosts
     airflow_webserver_hosts = new_resource.airflow_webserver_hosts
     cpu_cores = new_resource.cpu_cores
@@ -36,7 +34,7 @@ action :add do
     enables_celery_worker = new_resource.enables_celery_worker
     s3_malware_user = new_resource.malware_access_key
     s3_malware_password = new_resource.malware_secret_key
-    secret_key = airflow_secrets['pass'] unless airflow_secrets.empty?
+    secret_key = airflow_password
     logging_level = 'INFO'
 
     dnf_package ['redborder-malware-pythonpyenv', 'airflow'] do
@@ -74,11 +72,23 @@ action :add do
       mode '0755'
     end
 
-    template "#{airflow_dir}/airflow.cfg" do
+    # no trailing newline: Airflow uses the command output as the URL
+    { 'broker_url' => 'airflow-broker-url', 'result_backend' => 'airflow-result-backend' }.each do |file, name|
+      openbao_secret_file name do
+        source "#{name}.ctmpl.erb"
+        cookbook 'airflow'
+        variables(redis_hosts: redis_hosts, redis_port: redis_port)
+        destination "/run/rb-secrets/airflow/#{file}"
+        owner 'root'
+        group group
+        mode '0640'
+        unit %w(airflow-celery-worker airflow-scheduler airflow-webserver airflow-dag-processor airflow-triggerer)
+        action enables_celery_worker ? :add : :remove
+      end
+    end
+
+    openbao_secret_file 'airflow-cfg' do
       source 'airflow.conf.erb'
-      owner user
-      group group
-      mode '0644'
       cookbook 'airflow'
       variables(
         airflow_dir: airflow_dir,
@@ -99,34 +109,55 @@ action :add do
         airflow_webserver_hosts: airflow_webserver_hosts,
         redis_hosts: redis_hosts,
         redis_port: redis_port,
-        redis_password: redis_password,
         secret_key: secret_key,
         celery_worker_concurrency: workers[:celery_worker_concurrency],
         webserver_workers: workers[:webserver_workers],
         enables_celery_worker: enables_celery_worker,
-        logging_level: logging_level
+        logging_level: logging_level,
+        lbrace: '{{ "{{" }}' # Airflow's own {{ }} must not be parsed by the agent
       )
+      destination '/run/rb-secrets/airflow/airflow.cfg'
+      owner 'root'
+      group group
+      mode '0640'
+      unit %w(airflow-celery-worker airflow-scheduler airflow-webserver airflow-dag-processor airflow-triggerer)
     end
 
-    template "#{data_dir}/jwt_secret" do
+    link "#{airflow_dir}/airflow.cfg" do
+      to '/run/rb-secrets/airflow/airflow.cfg'
+    end
+
+    openbao_secret_file 'airflow-jwt-secret' do
       source 'jwt_secret.erb'
-      owner user
-      group group
-      mode '0644'
       cookbook 'airflow'
       variables(airflow_password: airflow_password)
+      destination '/run/rb-secrets/airflow/jwt_secret'
+      owner 'root'
+      group group
+      mode '0640'
+      unit %w(airflow-celery-worker airflow-scheduler airflow-webserver airflow-dag-processor airflow-triggerer)
     end
 
-    template "#{airflow_env_dir}/simple_auth_manager_passwords.json" do
+    link "#{data_dir}/jwt_secret" do
+      to '/run/rb-secrets/airflow/jwt_secret'
+    end
+
+    openbao_secret_file 'airflow-auth-passwords' do
       source 'simple_auth_manager_passwords.json.conf.erb'
-      owner user
-      group group
-      mode '0644'
       cookbook 'airflow'
       variables(
         api_user: api_user,
         airflow_password: airflow_password
       )
+      destination '/run/rb-secrets/airflow/simple_auth_manager_passwords.json'
+      owner 'root'
+      group group
+      mode '0640'
+      unit %w(airflow-celery-worker airflow-scheduler airflow-webserver airflow-dag-processor airflow-triggerer)
+    end
+
+    link "#{airflow_env_dir}/simple_auth_manager_passwords.json" do
+      to '/run/rb-secrets/airflow/simple_auth_manager_passwords.json'
     end
 
     template "#{airflow_dir}/logstash_hosts.yml" do
@@ -170,8 +201,16 @@ action :add do
     minio_endpoint = "http://s3.service.#{cdomain}:9001"
     minio_access_key = s3_malware_user
     minio_secret_key = s3_malware_password
+    if OpenBao.placeholder?(minio_secret_key)
+      # the CLI stores it in Airflow's DB: needs the real key, not a placeholder
+      real = OpenBao.run_secret('s3_malware') || {}
+      minio_access_key = real['s3_malware_access_key_id']
+      minio_secret_key = real['s3_malware_secret_key_id']
+    end
 
     execute 'add_minio_s3_connection' do
+      only_if { !minio_secret_key.nil? } # boolean: Chef warns on a non-boolean result
+      sensitive true
       command <<-EOC
         #{airflow_venv_bin} connections add #{minio_conn_id} \
           --conn-type 'aws' \

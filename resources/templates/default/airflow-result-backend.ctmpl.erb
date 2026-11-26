@@ -1,0 +1,1 @@
+redis://default:{{ with secret "secret/data/redis" }}{{ .Data.data.pass }}{{ end }}@<%= @redis_hosts.first %>:<%= @redis_port %>/2

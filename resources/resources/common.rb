@@ -13,7 +13,6 @@ attribute :cdomain, kind_of: String, default: 'redborder.cluster'
 attribute :api_user, kind_of: String, default: 'admin'
 attribute :redis_hosts, kind_of: Array, default: []
 attribute :redis_port, kind_of: Integer, default: 26379
-attribute :redis_secrets, kind_of: Hash, default: {}
 attribute :logstash_hosts, kind_of: Array, default: []
 attribute :airflow_webserver_hosts, kind_of: Array, default: []
 attribute :cpu_cores, kind_of: Integer, default: 4
