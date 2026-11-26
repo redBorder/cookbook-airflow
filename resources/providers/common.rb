@@ -165,11 +165,28 @@ action :add do
       notifies :create_if_missing, "file[#{data_dir}/airflow.db_initialized]", :immediately
     end
 
-    # Connection with MinIO
+    # Connection with the S3 service (SeaweedFS). The id is still minio_conn: the DAGs use it
     minio_conn_id = 'minio_conn'
-    minio_endpoint = "http://s3.service.#{cdomain}:9001"
+    minio_endpoint = "http://s3.service.#{cdomain}:8333"
     minio_access_key = s3_malware_user
     minio_secret_key = s3_malware_password
+
+    # The connection is only created when it does not exist: replace it when it points to
+    # another endpoint (MinIO)
+    execute 'delete_old_s3_connection' do
+      command "#{airflow_venv_bin} connections delete #{minio_conn_id}"
+      user user
+      group group
+      environment(
+        'AIRFLOW_HOME' => data_dir
+      )
+      only_if "#{airflow_venv_bin} connections list --output json | grep -w '\"conn_id\": \"#{minio_conn_id}\"'",
+        user: user,
+        environment: { 'AIRFLOW_HOME' => data_dir }
+      not_if "#{airflow_venv_bin} connections get #{minio_conn_id} --output json | grep -qF '#{minio_endpoint}'",
+        user: user,
+        environment: { 'AIRFLOW_HOME' => data_dir }
+    end
 
     execute 'add_minio_s3_connection' do
       command <<-EOC
